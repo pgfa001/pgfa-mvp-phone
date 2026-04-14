@@ -26,6 +26,7 @@ object DatabaseFactory {
         val cfg = dbConfigFromEnv()
 
         val config = HikariConfig().apply {
+            driverClassName = "org.postgresql.Driver"
             jdbcUrl = cfg.jdbcUrl
             username = cfg.user
             password = cfg.password
