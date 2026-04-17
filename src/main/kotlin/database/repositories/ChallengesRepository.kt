@@ -278,7 +278,7 @@ class ChallengesRepository {
         challengeId: UUID,
         teamId: UUID
     ): List<Pair<ChallengeSubmission, User>> {
-        return ChallengeSubmissionsTable
+        return (ChallengeSubmissionsTable innerJoin UsersTable)
             .selectAll()
             .where {
                 (ChallengeSubmissionsTable.challengeId eq challengeId) and
