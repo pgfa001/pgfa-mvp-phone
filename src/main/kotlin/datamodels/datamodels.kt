@@ -4,8 +4,10 @@ import com.provingground.database.tables.ConsentType
 import com.provingground.database.tables.SubscriptionType
 import com.provingground.database.tables.UserRole
 import com.provingground.database.tables.SubmissionValidationStatus
+import com.provingground.datamodels.response.ClubCmsResponse
 import java.util.UUID
 import kotlinx.serialization.Serializable
+import kotlin.String
 
 data class Club(
     val id: UUID,
@@ -15,6 +17,30 @@ data class Club(
     val primaryColor: String,
     val accentColor: String,
     val subscriptionType: SubscriptionType,
+    val createdAt: Long
+)
+
+fun Club.toCmsResponse(): ClubCmsResponse {
+    return ClubCmsResponse(
+        id = id.toString(),
+        name = name,
+        logoObjectKey = logoUrl,
+        accessCode = accessCode,
+        primaryColor = primaryColor,
+        accentColor = accessCode,
+        subscriptionType = subscriptionType,
+        createdAt = createdAt,
+    )
+}
+
+data class ClubLogoUploadIntent(
+    val id: UUID,
+    val actingUserId: UUID,
+    val objectKey: String,
+    val originalFileName: String,
+    val contentType: String,
+    val expiresAt: Long,
+    val consumedAt: Long?,
     val createdAt: Long
 )
 

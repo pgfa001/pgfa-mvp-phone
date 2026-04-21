@@ -41,7 +41,7 @@ fun Application.configureRouting() {
         s3Client = s3Client,
     )
 
-    val clubsService = ClubsService(clubsRepository, usersRepository)
+    val clubsService = ClubsService(clubsRepository, usersRepository, s3VideoStorageService)
     val teamsService = TeamsService(clubsRepository, teamsRepository, usersRepository)
 
     val passwordHasher = PasswordHasher()

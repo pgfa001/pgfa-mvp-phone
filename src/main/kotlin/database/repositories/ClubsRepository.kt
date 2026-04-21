@@ -1,12 +1,16 @@
 package com.provingground.database.repositories
 
 import com.provingground.database.dbQuery
+import com.provingground.database.tables.ClubLogoUploadIntentsTable
 import com.provingground.database.tables.ClubToUsersTable
 import com.provingground.database.tables.ClubsTable
 import com.provingground.database.tables.UsersTable
 import com.provingground.database.toClub
+import com.provingground.database.toClubLogoUploadIntent
 import com.provingground.datamodels.Club
+import com.provingground.datamodels.ClubLogoUploadIntent
 import com.provingground.datamodels.User
+import com.provingground.datamodels.response.UpdateClubRequest
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import java.util.UUID
@@ -63,10 +67,10 @@ class ClubsRepository {
         getAllTx()
     }
 
-    fun updateTx(id: UUID, club: Club): Boolean {
+    fun updateTx(id: UUID, club: UpdateClubRequest): Boolean {
         return ClubsTable.update({ ClubsTable.id eq id }) {
             it[name] = club.name
-            it[logoUrl] = club.logoUrl
+            it[logoUrl] = club.logoObjectKey ?: ""
             it[accessCode] = club.accessCode
             it[primaryColor] = club.primaryColor
             it[accentColor] = club.accentColor
@@ -74,7 +78,7 @@ class ClubsRepository {
         } > 0
     }
 
-    suspend fun update(id: UUID, club: Club): Boolean = dbQuery {
+    suspend fun update(id: UUID, club: UpdateClubRequest): Boolean = dbQuery {
         updateTx(id, club)
     }
 
@@ -138,5 +142,33 @@ class ClubsRepository {
             .selectAll()
             .where { ClubToUsersTable.userId eq userId }
             .map { it.toClub() }
+    }
+
+    fun createLogoUploadIntentTx(intent: ClubLogoUploadIntent): ClubLogoUploadIntent {
+        ClubLogoUploadIntentsTable.insert {
+            it[id] = intent.id
+            it[actingUserId] = intent.actingUserId
+            it[objectKey] = intent.objectKey
+            it[originalFileName] = intent.originalFileName
+            it[contentType] = intent.contentType
+            it[expiresAt] = intent.expiresAt
+            it[consumedAt] = intent.consumedAt
+            it[createdAt] = intent.createdAt
+        }
+        return intent
+    }
+
+    fun getLogoUploadIntentByObjectKeyTx(objectKey: String): ClubLogoUploadIntent? {
+        return ClubLogoUploadIntentsTable
+            .selectAll()
+            .where { ClubLogoUploadIntentsTable.objectKey eq objectKey }
+            .singleOrNull()
+            ?.toClubLogoUploadIntent()
+    }
+
+    fun markLogoUploadIntentConsumedTx(intentId: UUID, consumedAt: Long): Boolean {
+        return ClubLogoUploadIntentsTable.update({ ClubLogoUploadIntentsTable.id eq intentId }) {
+            it[ClubLogoUploadIntentsTable.consumedAt] = consumedAt
+        } > 0
     }
 }

@@ -5,6 +5,7 @@ import com.provingground.database.tables.ChallengeSubmissionsTable
 import com.provingground.database.tables.ChallengeToClubsTable
 import com.provingground.database.tables.ChallengeUploadIntentsTable
 import com.provingground.database.tables.ChallengesTable
+import com.provingground.database.tables.ClubLogoUploadIntentsTable
 import com.provingground.database.tables.ClubsTable
 import com.provingground.database.tables.ConsentsTable
 import com.provingground.database.tables.ParentToChildrenTable
@@ -16,11 +17,13 @@ import com.provingground.datamodels.ChallengeDemoUploadIntent
 import com.provingground.datamodels.ChallengeSubmission
 import com.provingground.datamodels.ChallengeUploadIntent
 import com.provingground.datamodels.Club
+import com.provingground.datamodels.ClubLogoUploadIntent
 import com.provingground.datamodels.Consent
 import com.provingground.datamodels.ParentChildRelationship
 import com.provingground.datamodels.Team
 import com.provingground.datamodels.User
 import org.jetbrains.exposed.sql.ResultRow
+import java.util.UUID
 
 fun ResultRow.toClub(): Club {
     return Club(
@@ -32,6 +35,19 @@ fun ResultRow.toClub(): Club {
         accentColor = this[ClubsTable.accentColor],
         subscriptionType = this[ClubsTable.subscriptionType],
         createdAt = this[ClubsTable.createdAt]
+    )
+}
+
+fun ResultRow.toClubLogoUploadIntent(): ClubLogoUploadIntent {
+    return ClubLogoUploadIntent(
+        id = this[ClubLogoUploadIntentsTable.id],
+        actingUserId = this[ClubLogoUploadIntentsTable.actingUserId],
+        objectKey = this[ClubLogoUploadIntentsTable.objectKey],
+        originalFileName = this[ClubLogoUploadIntentsTable.originalFileName],
+        contentType = this[ClubLogoUploadIntentsTable.contentType],
+        expiresAt = this[ClubLogoUploadIntentsTable.expiresAt],
+        consumedAt =this[ClubLogoUploadIntentsTable.consumedAt] ,
+        createdAt = this[ClubLogoUploadIntentsTable.createdAt],
     )
 }
 

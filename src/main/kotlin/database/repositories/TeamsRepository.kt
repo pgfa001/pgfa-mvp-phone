@@ -44,6 +44,15 @@ class TeamsRepository {
         getByIdTx(id)
     }
 
+    fun getByIdsTx(ids: List<UUID>): List<Team> {
+        if (ids.isEmpty()) return emptyList()
+
+        return TeamsTable
+            .selectAll()
+            .where { TeamsTable.id inList ids }
+            .map { it.toTeam() }
+    }
+
     fun getAllTx(): List<Team> {
         return TeamsTable.selectAll().map { it.toTeam() }
     }

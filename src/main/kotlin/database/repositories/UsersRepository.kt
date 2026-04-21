@@ -43,6 +43,15 @@ class UsersRepository {
             ?.toUser()
     }
 
+    fun getByIdsTx(ids: List<UUID>): List<User> {
+        if (ids.isEmpty()) return emptyList()
+
+        return UsersTable
+            .selectAll()
+            .where { UsersTable.id inList ids }
+            .map { it.toUser() }
+    }
+
     suspend fun getById(id: UUID): User? = dbQuery {
         getByIdTx(id)
     }

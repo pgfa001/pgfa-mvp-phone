@@ -21,3 +21,22 @@ data class ChallengeSubmissionResponse(
     val validationStatus: SubmissionValidationStatus,
     val createdAt: Long
 )
+
+@Serializable
+data class ChallengeReviewSubmissionItemResponse(
+    val submissionId: String,
+    val athleteId: String,
+    val athleteName: String,
+    val teamId: String,
+    val teamName: String,
+    val score: Int,
+    val validationStatus: SubmissionValidationStatus,
+    val createdAt: Long
+)
+
+@Serializable
+data class GetChallengeReviewSubmissionsResponse(
+    val challengeId: String,
+    val challengeTitle: String,
+    val submissions: List<ChallengeReviewSubmissionItemResponse>
+)

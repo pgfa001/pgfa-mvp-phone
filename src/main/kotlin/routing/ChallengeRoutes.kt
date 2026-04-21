@@ -284,6 +284,38 @@ fun Route.challengeRoutes(challengeService: ChallengeService) {
                 }
             }
 
+            get("/{challengeId}/review-submissions") {
+                val principal = call.principal<JWTPrincipal>()
+                val actingUserIdString = principal?.payload?.getClaim("userId")?.asString()
+
+                if (actingUserIdString.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.Unauthorized, ApiMessageResponse("Invalid token"))
+                    return@get
+                }
+
+                val challengeId = call.parameters["challengeId"]
+                if (challengeId.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.BadRequest, ApiMessageResponse("Missing challengeId"))
+                    return@get
+                }
+
+                val teamId = call.request.queryParameters["teamId"]
+
+                try {
+                    val response = challengeService.getChallengeReviewSubmissions(
+                        actingUserId = UUID.fromString(actingUserIdString),
+                        challengeId = challengeId,
+                        teamId = teamId
+                    )
+                    call.respond(HttpStatusCode.OK, response)
+                } catch (e: IllegalArgumentException) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ApiMessageResponse(e.message ?: "Invalid request")
+                    )
+                }
+            }
+
             post("/{challengeId}/submission-upload-url") {
                 val principal = call.principal<JWTPrincipal>()
                 val actingUserId = principal?.payload?.getClaim("userId")?.asString()

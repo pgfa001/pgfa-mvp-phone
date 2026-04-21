@@ -17,6 +17,7 @@ import com.provingground.datamodels.User
 import com.provingground.datamodels.VerifyChallengeSubmissionRequest
 import com.provingground.datamodels.response.ChallengeCmsResponse
 import com.provingground.datamodels.response.ChallengeDetailsResponse
+import com.provingground.datamodels.response.ChallengeReviewSubmissionItemResponse
 import com.provingground.datamodels.response.ChallengeSubmissionDetailsResponse
 import com.provingground.datamodels.response.ChallengeSubmissionResponse
 import com.provingground.datamodels.response.ChallengeSummaryResponse
@@ -28,6 +29,7 @@ import com.provingground.datamodels.response.CreateChallengeSubmissionResponse
 import com.provingground.datamodels.response.CreateChallengeSubmissionUploadUrlRequest
 import com.provingground.datamodels.response.CreateChallengeSubmissionUploadUrlResponse
 import com.provingground.datamodels.response.GetChallengeDemoVideoUrlResponse
+import com.provingground.datamodels.response.GetChallengeReviewSubmissionsResponse
 import com.provingground.datamodels.response.GetChallengesCmsResponse
 import com.provingground.datamodels.response.GetMyChallengeSubmissionsResponse
 import com.provingground.datamodels.response.LeaderboardEntryResponse
@@ -148,6 +150,102 @@ class ChallengeService(
                 throw IllegalArgumentException("Admins do not have personal challenge submissions")
             }
         }
+    }
+
+    suspend fun getChallengeReviewSubmissions(
+        actingUserId: UUID,
+        challengeId: String,
+        teamId: String?
+    ): GetChallengeReviewSubmissionsResponse = newSuspendedTransaction(Dispatchers.IO) {
+        val actingUser = usersRepository.getByIdTx(actingUserId)
+            ?: throw IllegalArgumentException("User not found")
+
+        if (actingUser.role != UserRole.COACH && actingUser.role != UserRole.ADMIN) {
+            throw IllegalArgumentException("Only coaches and admins can review challenge submissions")
+        }
+
+        val challengeUuid = try {
+            UUID.fromString(challengeId)
+        } catch (_: Exception) {
+            throw IllegalArgumentException("Invalid challengeId")
+        }
+
+        val challenge = challengesRepository.getByIdTx(challengeUuid)
+            ?: throw IllegalArgumentException("Challenge not found")
+
+        val requestedTeamUuid = if (!teamId.isNullOrBlank()) {
+            try {
+                UUID.fromString(teamId)
+            } catch (_: Exception) {
+                throw IllegalArgumentException("Invalid teamId")
+            }
+        } else null
+
+        val submissions: List<ChallengeSubmission> = when (actingUser.role) {
+            UserRole.COACH -> {
+                val coachedTeamIds = teamsRepository.getTeamsForUserTx(actingUser.id)
+                    .map { it.id }
+                    .toSet()
+
+                if (requestedTeamUuid != null) {
+                    if (requestedTeamUuid !in coachedTeamIds) {
+                        throw IllegalArgumentException("Coach may only review submissions for teams they coach")
+                    }
+
+                    challengesRepository.getAllSubmissionsForChallengeAndTeamTx(
+                        challengeId = challenge.id,
+                        teamId = requestedTeamUuid
+                    )
+                } else {
+                    challengesRepository.getSubmissionsByChallengeId(challenge.id)
+                        .filter { it.teamId in coachedTeamIds }
+                }
+            }
+
+            UserRole.ADMIN -> {
+                if (requestedTeamUuid != null) {
+                    challengesRepository.getAllSubmissionsForChallengeAndTeamTx(
+                        challengeId = challenge.id,
+                        teamId = requestedTeamUuid
+                    )
+                } else {
+                    challengesRepository.getSubmissionsByChallengeId(challenge.id)
+                }
+            }
+
+            else -> throw IllegalArgumentException("Only coaches and admins can review challenge submissions")
+        }
+
+        val athleteIds = submissions.map { it.userId }.distinct()
+        val teamIds = submissions.map { it.teamId }.distinct()
+
+        val usersById = usersRepository.getByIdsTx(athleteIds).associateBy { it.id }
+        val teamsById = teamsRepository.getByIdsTx(teamIds).associateBy { it.id }
+
+        GetChallengeReviewSubmissionsResponse(
+            challengeId = challenge.id.toString(),
+            challengeTitle = challenge.title,
+            submissions = submissions
+                .sortedByDescending { it.createdAt }
+                .map { submission ->
+                    val athlete = usersById[submission.userId]
+                        ?: throw IllegalStateException("Athlete not found for submission ${submission.id}")
+
+                    val team = teamsById[submission.teamId]
+                        ?: throw IllegalStateException("Team not found for submission ${submission.id}")
+
+                    ChallengeReviewSubmissionItemResponse(
+                        submissionId = submission.id.toString(),
+                        athleteId = athlete.id.toString(),
+                        athleteName = athlete.name,
+                        teamId = team.id.toString(),
+                        teamName = team.name,
+                        score = submission.score,
+                        validationStatus = submission.validationStatus,
+                        createdAt = submission.createdAt
+                    )
+                }
+        )
     }
 
     suspend fun createChallengeSubmission(
