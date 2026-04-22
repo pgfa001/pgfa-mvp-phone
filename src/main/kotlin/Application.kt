@@ -64,7 +64,7 @@ fun seedInitialData() {
         }
 
         // 1) Seed club
-        val clubAccessCode = "PGFC123"
+        val clubAccessCode = "PGFA123"
 
         val existingClub = ClubsTable
             .selectAll()
