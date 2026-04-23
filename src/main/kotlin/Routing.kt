@@ -21,6 +21,7 @@ import com.provingground.service.ConsentsService
 import com.provingground.service.HomeService
 import com.provingground.service.S3VideoStorageService
 import com.provingground.service.TeamsService
+import com.provingground.service.UserProfileService
 import com.provingground.service.UserService
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
@@ -55,6 +56,8 @@ fun Application.configureRouting() {
 
     val userService = UserService(usersRepository)
 
+    val userProfileService = UserProfileService(usersRepository, teamsRepository, challengesRepository)
+
     routing {
         /**
          * Authentication
@@ -86,7 +89,7 @@ fun Application.configureRouting() {
         /**
          * User details
          */
-        userRoutes(userService)
+        userRoutes(userService, userProfileService)
 
         /**
          * Challenges

@@ -2,6 +2,7 @@ package com.provingground.routing
 
 import com.provingground.datamodels.ApiMessageResponse
 import com.provingground.datamodels.EditUserDetailsRequest
+import com.provingground.service.UserProfileService
 import com.provingground.service.UserService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
@@ -15,7 +16,10 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import java.util.UUID
 
-fun Route.userRoutes(userService: UserService) {
+fun Route.userRoutes(
+    userService: UserService,
+    userProfileService: UserProfileService,
+) {
     route("/users") {
         authenticate("auth-jwt") {
 
@@ -44,6 +48,31 @@ fun Route.userRoutes(userService: UserService) {
                     val response = userService.getUserDetails(
                         actingUserId = UUID.fromString(actingUserIdString),
                         requestedUserId = userId
+                    )
+                    call.respond(HttpStatusCode.OK, response)
+                } catch (e: IllegalArgumentException) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ApiMessageResponse(e.message ?: "Invalid request")
+                    )
+                }
+            }
+
+            get("/me/profile") {
+                val principal = call.principal<JWTPrincipal>()
+                val actingUserIdString = principal?.payload?.getClaim("userId")?.asString()
+
+                if (actingUserIdString.isNullOrBlank()) {
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ApiMessageResponse("Invalid token")
+                    )
+                    return@get
+                }
+
+                try {
+                    val response = userProfileService.getMyProfile(
+                        actingUserId = UUID.fromString(actingUserIdString)
                     )
                     call.respond(HttpStatusCode.OK, response)
                 } catch (e: IllegalArgumentException) {

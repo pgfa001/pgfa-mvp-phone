@@ -115,7 +115,13 @@ class TeamsRepository {
     }
 
     fun getTeamsForUserTx(userId: UUID): List<Team> {
-        return (TeamsTable innerJoin TeamsToUsersTable)
+        return TeamsTable
+            .join(
+                otherTable = TeamsToUsersTable,
+                joinType = JoinType.INNER,
+                onColumn = TeamsTable.id,
+                otherColumn = TeamsToUsersTable.teamId
+            )
             .selectAll()
             .where { TeamsToUsersTable.userId eq userId }
             .map { it.toTeam() }

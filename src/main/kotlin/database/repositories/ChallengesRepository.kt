@@ -185,7 +185,25 @@ class ChallengesRepository {
                 (ChallengeSubmissionsTable.userId eq userId) and
                         (ChallengeSubmissionsTable.challengeId eq challengeId)
             }
+            .sortedByDescending { it[ChallengeSubmissionsTable.createdAt] }
             .map { it.toChallengeSubmission() }
+    }
+
+    fun getSubmissionsForAthleteTx(userId: UUID): List<ChallengeSubmission> {
+        return ChallengeSubmissionsTable
+            .selectAll()
+            .where { ChallengeSubmissionsTable.userId eq userId }
+            .map { it.toChallengeSubmission() }
+    }
+
+    fun getCompletedChallengesForAthleteTx(userId: UUID): List<ChallengeSubmission> {
+        return getSubmissionsForAthleteTx(userId)
+            .groupBy { it.challengeId }
+            .values
+            .map { submissionsForChallenge ->
+                submissionsForChallenge.maxBy { it.createdAt }
+            }
+            .sortedByDescending { it.createdAt }
     }
 
     suspend fun getSubmissionsByUserAndChallenge(userId: UUID, challengeId: UUID): List<ChallengeSubmission> = dbQuery {
