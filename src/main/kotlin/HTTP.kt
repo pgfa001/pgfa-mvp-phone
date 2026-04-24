@@ -27,6 +27,7 @@ fun Application.configureHTTP() {
     install(CORS) {
         allowHost("localhost:5173", schemes = listOf("http"))
         allowHost("pgfa-mvp-cms.onrender.com", schemes = listOf("https"))
+        allowHost("pgfa-mvp-cms-q89v.onrender.com", schemes = listOf("https"))
 
         allowMethod(HttpMethod.Options)
         allowMethod(HttpMethod.Put)
