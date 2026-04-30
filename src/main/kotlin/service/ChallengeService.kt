@@ -792,11 +792,17 @@ class ChallengeService(
         }
     }
 
+    private fun requireAdminOrCoach(user: User) {
+        if (user.role != UserRole.ADMIN && user.role != UserRole.COACH) {
+            throw IllegalArgumentException("Only admins or coaches can perform this action")
+        }
+    }
+
     suspend fun getAllChallengesCms(actingUserId: UUID): GetChallengesCmsResponse =
         newSuspendedTransaction(Dispatchers.IO) {
             val actingUser = usersRepository.getByIdTx(actingUserId)
                 ?: throw IllegalArgumentException("User not found")
-            requireAdmin(actingUser)
+            requireAdminOrCoach(actingUser)
 
             val challenges = challengesRepository.getAllTx()
 
