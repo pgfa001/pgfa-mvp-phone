@@ -23,6 +23,46 @@ fun Route.userRoutes(
     route("/users") {
         authenticate("auth-jwt") {
 
+            get("/search") {
+                val principal = call.principal<JWTPrincipal>()
+                val actingUserIdString = principal?.payload?.getClaim("userId")?.asString()
+
+                if (actingUserIdString.isNullOrBlank()) {
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ApiMessageResponse("Invalid token")
+                    )
+                    return@get
+                }
+
+                val query = call.request.queryParameters["query"]
+                val clubId = call.request.queryParameters["clubId"]
+                val role = call.request.queryParameters["role"]
+                val limitParam = call.request.queryParameters["limit"]
+                val limit = if (limitParam.isNullOrBlank()) {
+                    10
+                } else {
+                    limitParam.toIntOrNull()
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, ApiMessageResponse("Invalid limit"))
+                }
+
+                try {
+                    val response = userService.searchUsers(
+                        actingUserId = UUID.fromString(actingUserIdString),
+                        query = query,
+                        clubId = clubId,
+                        role = role,
+                        limit = limit
+                    )
+                    call.respond(HttpStatusCode.OK, response)
+                } catch (e: IllegalArgumentException) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ApiMessageResponse(e.message ?: "Invalid request")
+                    )
+                }
+            }
+
             get("/{userId}") {
                 val principal = call.principal<JWTPrincipal>()
                 val actingUserIdString = principal?.payload?.getClaim("userId")?.asString()

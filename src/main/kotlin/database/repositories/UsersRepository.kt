@@ -1,6 +1,7 @@
 package com.provingground.database.repositories
 
 import com.provingground.database.dbQuery
+import com.provingground.database.tables.ClubToUsersTable
 import com.provingground.database.tables.ParentToChildrenTable
 import com.provingground.database.tables.UserRole
 import com.provingground.database.tables.UsersTable
@@ -58,6 +59,16 @@ class UsersRepository {
 
     fun getAllTx(): List<User> {
         return UsersTable.selectAll().map { it.toUser() }
+    }
+
+    fun getUsersForClubIdsTx(clubIds: Collection<UUID>): List<User> {
+        if (clubIds.isEmpty()) return emptyList()
+
+        return (UsersTable innerJoin ClubToUsersTable)
+            .selectAll()
+            .where { ClubToUsersTable.clubId inList clubIds }
+            .map { it.toUser() }
+            .distinctBy { it.id }
     }
 
     suspend fun getAll(): List<User> = dbQuery {

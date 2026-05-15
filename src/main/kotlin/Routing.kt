@@ -55,7 +55,7 @@ fun Application.configureRouting() {
 
     val challengeService = ChallengeService(usersRepository, teamsRepository, challengesRepository, clubsRepository, s3VideoStorageService)
 
-    val userService = UserService(usersRepository)
+    val userService = UserService(usersRepository, clubsRepository, teamsRepository)
 
     val userProfileService = UserProfileService(usersRepository, teamsRepository, challengesRepository)
 

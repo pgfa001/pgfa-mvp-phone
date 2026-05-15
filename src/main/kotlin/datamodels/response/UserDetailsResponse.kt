@@ -25,3 +25,23 @@ data class ChildUserSummaryResponse(
     val dob: String,
     val position: String? = null
 )
+
+@Serializable
+data class SearchUsersResponse(
+    val query: String? = null,
+    val limit: Int,
+    val users: List<UserSearchResultResponse>
+)
+
+@Serializable
+data class UserSearchResultResponse(
+    val id: String,
+    val name: String,
+    val username: String,
+    val role: UserRole,
+    val email: String? = null,
+    val phone: String? = null,
+    val avatarUrl: String? = null,
+    val position: String? = null,
+    val clubIds: List<String>
+)
