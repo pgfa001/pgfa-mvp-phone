@@ -63,6 +63,7 @@ data class User(
     val phone: String?,
     val role: UserRole,
     val dob: String,
+    val gender: String?,
     val avatarUrl: String?,
     val position: String?,
     val createdAt: Long

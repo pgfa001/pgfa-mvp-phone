@@ -25,6 +25,7 @@ class UsersRepository {
             it[phone] = user.phone
             it[role] = user.role
             it[dob] = user.dob
+            it[gender] = user.gender
             it[avatarUrl] = user.avatarUrl
             it[position] = user.position
             it[createdAt] = user.createdAt
@@ -147,6 +148,7 @@ class UsersRepository {
             it[phone] = user.phone
             it[role] = user.role
             it[dob] = user.dob
+            it[gender] = user.gender
             it[avatarUrl] = user.avatarUrl
             it[position] = user.position
         } > 0

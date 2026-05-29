@@ -19,6 +19,7 @@ object UsersTable : Table("users") {
     val phone = varchar("phone", 255).nullable()
     val role = enumerationByName("role", 50, UserRole::class)
     val dob = varchar("dob", 255)
+    val gender = varchar("gender", 50).nullable()
     val avatarUrl = varchar("avatarUrl", 255).nullable()
     val position = varchar("position", 255).nullable()
     val createdAt = long("created_at")

@@ -83,6 +83,10 @@ class AuthService(
                 throw IllegalArgumentException("Athlete accounts require a position")
             }
 
+            if (role == UserRole.ATHLETE && request.gender.isNullOrBlank()) {
+                throw IllegalArgumentException("Athlete accounts require a gender")
+            }
+
             val now = System.currentTimeMillis()
 
             val primaryUser = User(
@@ -94,6 +98,7 @@ class AuthService(
                 phone = request.phone,
                 role = role,
                 dob = request.dob,
+                gender = if (role == UserRole.ATHLETE) request.gender?.trim() else request.gender?.trim()?.takeIf { it.isNotBlank() },
                 avatarUrl = null,
                 position = if (role == UserRole.ATHLETE) request.position else null,
                 createdAt = now
@@ -109,6 +114,10 @@ class AuthService(
                     }
 
                     val childNow = System.currentTimeMillis()
+                    if (childRequest.gender.isNullOrBlank()) {
+                        throw IllegalArgumentException("Child athlete accounts require a gender")
+                    }
+
                     val childUser = User(
                         id = UUID.randomUUID(),
                         name = childRequest.name,
@@ -118,6 +127,7 @@ class AuthService(
                         phone = null,
                         role = UserRole.ATHLETE,
                         dob = childRequest.dob,
+                        gender = childRequest.gender.trim(),
                         avatarUrl = null,
                         position = childRequest.position,
                         createdAt = childNow

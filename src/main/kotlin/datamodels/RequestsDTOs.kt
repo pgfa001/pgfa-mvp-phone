@@ -20,6 +20,7 @@ data class CreateUserAccountRequest(
     val phone: String,
     val role: String,
     val dob: String, // MM/dd/yyyy
+    val gender: String? = null,
     val position: String? = null,
     val childAccounts: List<CreateChildAccountRequest> = emptyList()
 )
@@ -30,6 +31,7 @@ data class CreateChildAccountRequest(
     val username: String,
     val password: String,
     val dob: String, // MM/dd/yyyy
+    val gender: String? = null,
     val position: String
 )
 

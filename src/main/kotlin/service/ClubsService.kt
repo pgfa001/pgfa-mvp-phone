@@ -123,6 +123,7 @@ class ClubsService(
             phone = request.phone.trim(),
             role = UserRole.ADMIN,
             dob = request.dob,
+            gender = null,
             avatarUrl = null,
             position = null,
             createdAt = now

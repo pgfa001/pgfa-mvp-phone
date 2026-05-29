@@ -113,6 +113,7 @@ class UserService(
                     name = user.name,
                     username = user.username,
                     role = user.role,
+                    gender = user.gender,
                     email = user.email,
                     phone = user.phone,
                     avatarUrl = user.avatarUrl,
@@ -147,6 +148,7 @@ class UserService(
                     name = child.name,
                     username = child.username,
                     dob = child.dob,
+                    gender = child.gender,
                     position = child.position
                 )
             }
@@ -160,6 +162,7 @@ class UserService(
             username = user.username,
             role = user.role,
             dob = user.dob,
+            gender = user.gender,
             email = user.email,
             phone = user.phone,
             avatarUrl = user.avatarUrl,

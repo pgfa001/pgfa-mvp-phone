@@ -10,6 +10,7 @@ data class UserDetailsResponse(
     val username: String,
     val role: UserRole,
     val dob: String,
+    val gender: String? = null,
     val email: String? = null,
     val phone: String? = null,
     val avatarUrl: String? = null,
@@ -23,6 +24,7 @@ data class ChildUserSummaryResponse(
     val name: String,
     val username: String,
     val dob: String,
+    val gender: String? = null,
     val position: String? = null
 )
 
@@ -39,6 +41,7 @@ data class UserSearchResultResponse(
     val name: String,
     val username: String,
     val role: UserRole,
+    val gender: String? = null,
     val email: String? = null,
     val phone: String? = null,
     val avatarUrl: String? = null,

@@ -73,6 +73,7 @@ fun ResultRow.toUser(): User {
         phone = this[UsersTable.phone],
         role = this[UsersTable.role],
         dob = this[UsersTable.dob],
+        gender = this[UsersTable.gender],
         avatarUrl = this[UsersTable.avatarUrl],
         position = this[UsersTable.position],
         createdAt = this[UsersTable.createdAt]
