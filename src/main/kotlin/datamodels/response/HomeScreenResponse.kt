@@ -13,6 +13,41 @@ data class HomeScreenResponse(
 )
 
 @Serializable
+data class PreviousChallengesResponse(
+    val challenges: List<PreviousChallengeResponse>
+)
+
+@Serializable
+data class PreviousChallengeResponse(
+    val name: String,
+    val completed: Boolean,
+    val score: Int? = null
+)
+
+@Serializable
+data class HomeRankSummaryResponse(
+    val athleteId: String,
+    val teamRank: HomeTeamRankResponse,
+    val clubRank: HomeClubRankResponse,
+    val participatedChallengeCount: Int
+)
+
+@Serializable
+data class HomeTeamRankResponse(
+    val rank: Int? = null,
+    val averageRank: Double? = null,
+    val teamId: String,
+    val teamName: String
+)
+
+@Serializable
+data class HomeClubRankResponse(
+    val rank: Int? = null,
+    val averageRank: Double? = null,
+    val athleteCount: Int
+)
+
+@Serializable
 data class HomeChallengeCardResponse(
     val athleteId: String? = null,
     val athleteName: String? = null,

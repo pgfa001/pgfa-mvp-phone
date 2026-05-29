@@ -39,6 +39,71 @@ fun Route.homeRoutes(homeService: HomeService) {
                     )
                 }
             }
+
+            get("/previous-challenges") {
+                val principal = call.principal<JWTPrincipal>()
+                val userIdString = principal?.payload?.getClaim("userId")?.asString()
+
+                if (userIdString.isNullOrBlank()) {
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ApiMessageResponse("Invalid token")
+                    )
+                    return@get
+                }
+
+                val pageSizeParam = call.request.queryParameters["pageSize"]
+                val pageSize = if (pageSizeParam.isNullOrBlank()) {
+                    3
+                } else {
+                    pageSizeParam.toIntOrNull()
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, ApiMessageResponse("Invalid pageSize"))
+                }
+
+                val athleteId = call.request.queryParameters["athleteId"]
+
+                try {
+                    val response = homeService.getPreviousChallenges(
+                        userId = UUID.fromString(userIdString),
+                        pageSize = pageSize,
+                        athleteId = athleteId
+                    )
+                    call.respond(HttpStatusCode.OK, response)
+                } catch (e: IllegalArgumentException) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ApiMessageResponse(e.message ?: "Invalid request")
+                    )
+                }
+            }
+
+            get("/rank-summary") {
+                val principal = call.principal<JWTPrincipal>()
+                val userIdString = principal?.payload?.getClaim("userId")?.asString()
+
+                if (userIdString.isNullOrBlank()) {
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ApiMessageResponse("Invalid token")
+                    )
+                    return@get
+                }
+
+                val athleteId = call.request.queryParameters["athleteId"]
+
+                try {
+                    val response = homeService.getRankSummary(
+                        userId = UUID.fromString(userIdString),
+                        athleteId = athleteId
+                    )
+                    call.respond(HttpStatusCode.OK, response)
+                } catch (e: IllegalArgumentException) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ApiMessageResponse(e.message ?: "Invalid request")
+                    )
+                }
+            }
         }
     }
 }

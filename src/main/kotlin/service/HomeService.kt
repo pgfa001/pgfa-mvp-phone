@@ -11,13 +11,19 @@ import com.provingground.datamodels.Team
 import com.provingground.datamodels.User
 import com.provingground.datamodels.response.ChallengeSummaryResponse
 import com.provingground.datamodels.response.HomeChallengeCardResponse
+import com.provingground.datamodels.response.HomeClubRankResponse
+import com.provingground.datamodels.response.HomeRankSummaryResponse
 import com.provingground.datamodels.response.HomeScreenResponse
+import com.provingground.datamodels.response.HomeTeamRankResponse
 import com.provingground.datamodels.response.LeaderboardEntryResponse
+import com.provingground.datamodels.response.PreviousChallengeResponse
+import com.provingground.datamodels.response.PreviousChallengesResponse
 import com.provingground.datamodels.response.SubmissionSummaryResponse
 import com.provingground.datamodels.response.TeamChallengeStatsResponse
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.util.UUID
+import kotlin.math.roundToInt
 
 class HomeService(
     private val usersRepository: UsersRepository,
@@ -45,6 +51,114 @@ class HomeService(
                 cards = cards
             )
         }
+
+    suspend fun getRankSummary(
+        userId: UUID,
+        athleteId: String? = null
+    ): HomeRankSummaryResponse = newSuspendedTransaction(Dispatchers.IO) {
+        val user = usersRepository.getByIdTx(userId)
+            ?: throw IllegalArgumentException("User not found")
+
+        val athlete = resolveHomeAthlete(user, athleteId, featureName = "rank summary")
+        val team = teamsRepository.getPrimaryTeamForUserTx(athlete.id)
+            ?: throw IllegalArgumentException("Athlete is not assigned to a team")
+
+        val athleteSubmissions = challengesRepository.getSubmissionsForAthleteTx(athlete.id)
+        val participatedChallengeIds = athleteSubmissions
+            .map { it.challengeId }
+            .distinct()
+
+        val clubTeams = teamsRepository.getByClubIdTx(team.clubId)
+        val clubTeamIds = clubTeams.map { it.id }.toSet()
+
+        val clubAthleteCount = clubTeams
+            .flatMap { clubTeam -> teamsRepository.getAthletesForTeamTx(clubTeam.id) }
+            .distinctBy { it.id }
+            .size
+
+        val ranks = participatedChallengeIds.mapNotNull { challengeId ->
+            val challenge = challengesRepository.getByIdTx(challengeId) ?: return@mapNotNull null
+
+            val teamRank = calculateRankForAthlete(
+                athleteId = athlete.id,
+                submissions = challengesRepository.getAllSubmissionsForChallengeAndTeamTx(
+                    challengeId = challenge.id,
+                    teamId = team.id
+                ),
+                scoringType = challenge.scoringType
+            ) ?: return@mapNotNull null
+
+            val clubRank = calculateRankForAthlete(
+                athleteId = athlete.id,
+                submissions = challengesRepository
+                    .getSubmissionsForChallengeTx(challenge.id)
+                    .filter { submission -> submission.teamId in clubTeamIds },
+                scoringType = challenge.scoringType
+            ) ?: return@mapNotNull null
+
+            teamRank to clubRank
+        }
+
+        val averageTeamRank = ranks.map { it.first }.averageOrNull()
+        val averageClubRank = ranks.map { it.second }.averageOrNull()
+
+        HomeRankSummaryResponse(
+            athleteId = athlete.id.toString(),
+            teamRank = HomeTeamRankResponse(
+                rank = averageTeamRank?.roundToInt(),
+                averageRank = averageTeamRank,
+                teamId = team.id.toString(),
+                teamName = team.name
+            ),
+            clubRank = HomeClubRankResponse(
+                rank = averageClubRank?.roundToInt(),
+                averageRank = averageClubRank,
+                athleteCount = clubAthleteCount
+            ),
+            participatedChallengeCount = ranks.size
+        )
+    }
+
+    suspend fun getPreviousChallenges(
+        userId: UUID,
+        pageSize: Int = 3,
+        athleteId: String? = null
+    ): PreviousChallengesResponse = newSuspendedTransaction(Dispatchers.IO) {
+        if (pageSize <= 0) {
+            throw IllegalArgumentException("pageSize must be greater than 0")
+        }
+
+        val user = usersRepository.getByIdTx(userId)
+            ?: throw IllegalArgumentException("User not found")
+
+        val athlete = resolveHomeAthlete(user, athleteId, featureName = "previous challenges")
+
+        val team = teamsRepository.getPrimaryTeamForUserTx(athlete.id)
+            ?: return@newSuspendedTransaction PreviousChallengesResponse(challenges = emptyList())
+
+        val challenges = challengesRepository.getPreviousChallengesForClubTx(
+            clubId = team.clubId,
+            limit = pageSize
+        )
+
+        PreviousChallengesResponse(
+            challenges = challenges.map { challenge ->
+                val bestSubmission = challengesRepository
+                    .getSubmissionsByUserAndChallengeTx(
+                        userId = athlete.id,
+                        challengeId = challenge.id
+                    )
+                    .sortedWith(bestChallengeSubmissionComparator(challenge.scoringType))
+                    .firstOrNull()
+
+                PreviousChallengeResponse(
+                    name = challenge.title,
+                    completed = bestSubmission != null,
+                    score = bestSubmission?.score
+                )
+            }
+        )
+    }
 
     private suspend fun buildAthleteCards(user: User): List<HomeChallengeCardResponse> {
         val team = teamsRepository.getPrimaryTeamForUserTx(user.id) ?: return emptyList()
@@ -180,6 +294,68 @@ class HomeService(
             }
     }
 
+    private fun resolveHomeAthlete(
+        user: User,
+        athleteId: String?,
+        featureName: String
+    ): User {
+        return when (user.role) {
+            UserRole.ATHLETE -> {
+                if (!athleteId.isNullOrBlank() && athleteId != user.id.toString()) {
+                    throw IllegalArgumentException("Athletes can only request their own $featureName")
+                }
+                user
+            }
+
+            UserRole.PARENT -> {
+                val children = usersRepository.getChildrenForParentTx(user.id)
+
+                if (!athleteId.isNullOrBlank()) {
+                    val athleteUuid = try {
+                        UUID.fromString(athleteId)
+                    } catch (_: Exception) {
+                        throw IllegalArgumentException("Invalid athleteId")
+                    }
+
+                    children.firstOrNull { it.id == athleteUuid }
+                        ?: throw IllegalArgumentException("Parents may only request $featureName for their own children")
+                } else {
+                    if (children.size != 1) {
+                        throw IllegalArgumentException("athleteId is required for parents with multiple children")
+                    }
+                    children.first()
+                }
+            }
+
+            UserRole.COACH, UserRole.ADMIN, UserRole.SUPERADMIN -> {
+                throw IllegalArgumentException("$featureName is only available for athletes and parents")
+            }
+        }
+    }
+
+    private fun calculateRankForAthlete(
+        athleteId: UUID,
+        submissions: List<ChallengeSubmission>,
+        scoringType: ChallengeScoringType
+    ): Int? {
+        val rankedBestSubmissions = submissions
+            .groupBy { it.userId }
+            .values
+            .map { athleteSubmissions ->
+                athleteSubmissions.sortedWith(bestChallengeSubmissionComparator(scoringType)).first()
+            }
+            .sortedWith(bestChallengeSubmissionComparator(scoringType))
+
+        return rankedBestSubmissions.indexOfFirst { it.userId == athleteId }
+            .takeIf { it >= 0 }
+            ?.plus(1)
+    }
+
+    private fun List<Int>.averageOrNull(): Double? {
+        if (isEmpty()) return null
+        return average()
+    }
+
     private fun bestSubmissionComparator(
         scoringType: ChallengeScoringType
     ): Comparator<Pair<ChallengeSubmission, User>> {
@@ -189,6 +365,18 @@ class HomeService(
         } else {
             compareBy<Pair<ChallengeSubmission, User>> { it.first.score }
                 .thenBy { it.first.createdAt }
+        }
+    }
+
+    private fun bestChallengeSubmissionComparator(
+        scoringType: ChallengeScoringType
+    ): Comparator<ChallengeSubmission> {
+        return if (scoringType.higherIsBetter) {
+            compareByDescending<ChallengeSubmission> { it.score }
+                .thenBy { it.createdAt }
+        } else {
+            compareBy<ChallengeSubmission> { it.score }
+                .thenBy { it.createdAt }
         }
     }
 

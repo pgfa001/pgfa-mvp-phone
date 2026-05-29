@@ -302,6 +302,23 @@ class ChallengesRepository {
             .maxByOrNull { it.startTime }
     }
 
+    fun getPreviousChallengesForClubTx(
+        clubId: UUID,
+        limit: Int,
+        now: Long = System.currentTimeMillis()
+    ): List<Challenge> {
+        return (ChallengesTable innerJoin ChallengeToClubsTable)
+            .selectAll()
+            .where {
+                (ChallengeToClubsTable.clubId eq clubId) and
+                        (ChallengesTable.endTime less now)
+            }
+            .map { it.toChallenge() }
+            .distinctBy { it.id }
+            .sortedByDescending { it.endTime }
+            .take(limit)
+    }
+
     fun getSubmissionsForChallengeTx(
         challengeId: UUID
     ): List<ChallengeSubmission> {
