@@ -14,6 +14,9 @@ import com.provingground.datamodels.response.HomeChallengeCardResponse
 import com.provingground.datamodels.response.HomeClubRankResponse
 import com.provingground.datamodels.response.HomeRankSummaryResponse
 import com.provingground.datamodels.response.HomeScreenResponse
+import com.provingground.datamodels.response.HomeStatsPeriod
+import com.provingground.datamodels.response.HomeStatsResponse
+import com.provingground.datamodels.response.HomeThisWeekStatsResponse
 import com.provingground.datamodels.response.HomeTeamRankResponse
 import com.provingground.datamodels.response.LeaderboardEntryResponse
 import com.provingground.datamodels.response.PreviousChallengeResponse
@@ -31,6 +34,8 @@ class HomeService(
     private val challengesRepository: ChallengesRepository,
     private val videoStorageService: VideoStorageService
 ) {
+    private val weeklyStatsRequiredSubmissions = 7
+
 
     suspend fun getHomeScreen(userId: UUID): HomeScreenResponse =
         newSuspendedTransaction(Dispatchers.IO) {
@@ -51,6 +56,124 @@ class HomeService(
                 cards = cards
             )
         }
+
+    suspend fun getStats(
+        userId: UUID,
+        period: String?,
+        athleteId: String? = null
+    ): HomeStatsResponse = newSuspendedTransaction(Dispatchers.IO) {
+        val requestedPeriod = parseStatsPeriod(period)
+        val user = usersRepository.getByIdTx(userId)
+            ?: throw IllegalArgumentException("User not found")
+
+        val athlete = resolveHomeAthlete(user, athleteId, featureName = "stats")
+        val team = teamsRepository.getPrimaryTeamForUserTx(athlete.id)
+            ?: throw IllegalArgumentException("Athlete is not assigned to a team")
+
+        if (requestedPeriod == HomeStatsPeriod.THIS_WEEK) {
+            return@newSuspendedTransaction buildThisWeekStatsResponse(
+                athlete = athlete,
+                team = team
+            )
+        }
+
+        val athleteSubmissions = challengesRepository.getSubmissionsForAthleteTx(athlete.id)
+        val completedChallengeIds = athleteSubmissions.map { it.challengeId }.distinct()
+        val clubTeams = teamsRepository.getByClubIdTx(team.clubId)
+        val clubTeamIds = clubTeams.map { it.id }.toSet()
+
+        val bestClubRank = completedChallengeIds.mapNotNull { challengeId ->
+            val challenge = challengesRepository.getByIdTx(challengeId) ?: return@mapNotNull null
+
+            calculateRankForAthlete(
+                athleteId = athlete.id,
+                submissions = challengesRepository
+                    .getSubmissionsForChallengeTx(challenge.id)
+                    .filter { submission -> submission.teamId in clubTeamIds },
+                scoringType = challenge.scoringType
+            )
+        }.minOrNull()
+
+        val previousChallenges = challengesRepository.getPreviousChallengesForClubTx(team.clubId)
+        val completedChallengeIdSet = completedChallengeIds.toSet()
+
+        HomeStatsResponse(
+            period = requestedPeriod,
+            athleteId = athlete.id.toString(),
+            totalChallengesCompleted = completedChallengeIds.size,
+            currentStreak = calculateCurrentStreak(
+                previousChallenges = previousChallenges,
+                completedChallengeIds = completedChallengeIdSet
+            ),
+            totalSubmissions = athleteSubmissions.size,
+            bestClubRank = bestClubRank
+        )
+    }
+
+    private fun buildThisWeekStatsResponse(
+        athlete: User,
+        team: Team
+    ): HomeStatsResponse {
+        val challenge = challengesRepository.getCurrentChallengeForClubTx(team.clubId)
+            ?: throw IllegalArgumentException("No active challenge found for club")
+
+        val athleteSubmissions = challengesRepository
+            .getSubmissionsByUserAndChallengeTx(
+                userId = athlete.id,
+                challengeId = challenge.id
+            )
+
+        val totalAttempts = athleteSubmissions.size
+        val averageScore = athleteSubmissions.map { it.score }.averageOrNull()
+        val bestSubmission = athleteSubmissions
+            .sortedWith(bestChallengeSubmissionComparator(challenge.scoringType))
+            .firstOrNull()
+
+        val clubTeams = teamsRepository.getByClubIdTx(team.clubId)
+        val clubTeamIds = clubTeams.map { it.id }.toSet()
+        val clubAthleteCount = clubTeams
+            .flatMap { clubTeam -> teamsRepository.getAthletesForTeamTx(clubTeam.id) }
+            .distinctBy { it.id }
+            .size
+
+        val clubSubmissions = challengesRepository
+            .getSubmissionsForChallengeTx(challenge.id)
+            .filter { submission -> submission.teamId in clubTeamIds }
+
+        val unlocked = totalAttempts >= weeklyStatsRequiredSubmissions
+
+        return HomeStatsResponse(
+            period = HomeStatsPeriod.THIS_WEEK,
+            athleteId = athlete.id.toString(),
+            thisWeek = HomeThisWeekStatsResponse(
+                challengeId = challenge.id.toString(),
+                challengeTitle = challenge.title,
+                scoringType = challenge.scoringType,
+                unlocked = unlocked,
+                requiredSubmissions = weeklyStatsRequiredSubmissions,
+                totalAttempts = totalAttempts,
+                remainingSubmissions = (weeklyStatsRequiredSubmissions - totalAttempts).coerceAtLeast(0),
+                averageScore = averageScore,
+                bestScore = bestSubmission?.score,
+                bestScoreSubmissionId = bestSubmission?.id?.toString(),
+                improvementPercentage = if (unlocked && averageScore != null && bestSubmission != null) {
+                    calculateImprovementPercentage(
+                        averageScore = averageScore,
+                        bestScore = bestSubmission.score,
+                        scoringType = challenge.scoringType
+                    )
+                } else {
+                    null
+                },
+                clubAverageScore = clubSubmissions.map { it.score }.averageOrNull(),
+                clubAverageAttempts = if (clubAthleteCount == 0) {
+                    0.0
+                } else {
+                    clubSubmissions.size.toDouble() / clubAthleteCount.toDouble()
+                }
+            )
+        )
+    }
 
     suspend fun getRankSummary(
         userId: UUID,
@@ -354,6 +477,49 @@ class HomeService(
     private fun List<Int>.averageOrNull(): Double? {
         if (isEmpty()) return null
         return average()
+    }
+
+    private fun calculateImprovementPercentage(
+        averageScore: Double,
+        bestScore: Int,
+        scoringType: ChallengeScoringType
+    ): Double? {
+        if (averageScore == 0.0) return null
+
+        val improvement = if (scoringType.higherIsBetter) {
+            bestScore.toDouble() - averageScore
+        } else {
+            averageScore - bestScore.toDouble()
+        }
+
+        return improvement / kotlin.math.abs(averageScore) * 100.0
+    }
+
+    private fun parseStatsPeriod(period: String?): HomeStatsPeriod {
+        val value = period?.takeIf { it.isNotBlank() } ?: HomeStatsPeriod.ALL_TIME.name
+
+        return try {
+            HomeStatsPeriod.valueOf(value.uppercase())
+        } catch (_: Exception) {
+            throw IllegalArgumentException("Invalid period")
+        }
+    }
+
+    private fun calculateCurrentStreak(
+        previousChallenges: List<Challenge>,
+        completedChallengeIds: Set<UUID>
+    ): Int {
+        var streak = 0
+
+        for (challenge in previousChallenges) {
+            if (challenge.id in completedChallengeIds) {
+                streak++
+            } else {
+                break
+            }
+        }
+
+        return streak
     }
 
     private fun bestSubmissionComparator(

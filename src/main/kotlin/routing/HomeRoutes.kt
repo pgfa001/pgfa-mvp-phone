@@ -77,6 +77,36 @@ fun Route.homeRoutes(homeService: HomeService) {
                 }
             }
 
+            get("/stats") {
+                val principal = call.principal<JWTPrincipal>()
+                val userIdString = principal?.payload?.getClaim("userId")?.asString()
+
+                if (userIdString.isNullOrBlank()) {
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ApiMessageResponse("Invalid token")
+                    )
+                    return@get
+                }
+
+                val period = call.request.queryParameters["period"]
+                val athleteId = call.request.queryParameters["athleteId"]
+
+                try {
+                    val response = homeService.getStats(
+                        userId = UUID.fromString(userIdString),
+                        period = period,
+                        athleteId = athleteId
+                    )
+                    call.respond(HttpStatusCode.OK, response)
+                } catch (e: IllegalArgumentException) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ApiMessageResponse(e.message ?: "Invalid request")
+                    )
+                }
+            }
+
             get("/rank-summary") {
                 val principal = call.principal<JWTPrincipal>()
                 val userIdString = principal?.payload?.getClaim("userId")?.asString()

@@ -304,10 +304,10 @@ class ChallengesRepository {
 
     fun getPreviousChallengesForClubTx(
         clubId: UUID,
-        limit: Int,
+        limit: Int? = null,
         now: Long = System.currentTimeMillis()
     ): List<Challenge> {
-        return (ChallengesTable innerJoin ChallengeToClubsTable)
+        val challenges = (ChallengesTable innerJoin ChallengeToClubsTable)
             .selectAll()
             .where {
                 (ChallengeToClubsTable.clubId eq clubId) and
@@ -316,7 +316,8 @@ class ChallengesRepository {
             .map { it.toChallenge() }
             .distinctBy { it.id }
             .sortedByDescending { it.endTime }
-            .take(limit)
+
+        return if (limit == null) challenges else challenges.take(limit)
     }
 
     fun getSubmissionsForChallengeTx(

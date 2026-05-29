@@ -6,6 +6,12 @@ import com.provingground.database.tables.UserRole
 import kotlinx.serialization.Serializable
 
 @Serializable
+enum class HomeStatsPeriod {
+    THIS_WEEK,
+    ALL_TIME
+}
+
+@Serializable
 data class HomeScreenResponse(
     val userId: String,
     val role: UserRole,
@@ -30,6 +36,34 @@ data class HomeRankSummaryResponse(
     val teamRank: HomeTeamRankResponse,
     val clubRank: HomeClubRankResponse,
     val participatedChallengeCount: Int
+)
+
+@Serializable
+data class HomeStatsResponse(
+    val period: HomeStatsPeriod,
+    val athleteId: String,
+    val totalChallengesCompleted: Int? = null,
+    val currentStreak: Int? = null,
+    val totalSubmissions: Int? = null,
+    val bestClubRank: Int? = null,
+    val thisWeek: HomeThisWeekStatsResponse? = null
+)
+
+@Serializable
+data class HomeThisWeekStatsResponse(
+    val challengeId: String,
+    val challengeTitle: String,
+    val scoringType: ChallengeScoringType,
+    val unlocked: Boolean,
+    val requiredSubmissions: Int,
+    val totalAttempts: Int,
+    val remainingSubmissions: Int,
+    val averageScore: Double? = null,
+    val bestScore: Int? = null,
+    val bestScoreSubmissionId: String? = null,
+    val improvementPercentage: Double? = null,
+    val clubAverageScore: Double? = null,
+    val clubAverageAttempts: Double
 )
 
 @Serializable
