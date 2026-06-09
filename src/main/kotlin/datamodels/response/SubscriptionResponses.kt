@@ -48,6 +48,9 @@ data class CreateSubscriptionCheckoutResponse(
     val athleteUserId: String,
     val customerId: String,
     val subscriptionId: String,
+    val paymentIntentClientSecret: String,
+    val setupIntentClientSecret: String? = null,
+    val ephemeralKeySecret: String? = null,
     val clientSecret: String
 )
 

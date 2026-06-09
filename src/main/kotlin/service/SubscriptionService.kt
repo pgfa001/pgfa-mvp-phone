@@ -109,6 +109,7 @@ class SubscriptionService(
             athleteUserId = preparation.athlete.id.toString(),
             customerId = checkout.customerId,
             subscriptionId = checkout.subscriptionId,
+            paymentIntentClientSecret = checkout.clientSecret,
             clientSecret = checkout.clientSecret
         )
     }
