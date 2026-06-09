@@ -60,6 +60,9 @@ class StripeBillingService(
             ?: throw IllegalArgumentException("Stripe secret key is not configured")
         val configuredPriceId = priceId?.takeIf { it.isNotBlank() }
             ?: throw IllegalArgumentException("Stripe athlete monthly price id is not configured")
+        if (!configuredPriceId.startsWith("price_")) {
+            throw IllegalArgumentException("STRIPE_ATHLETE_MONTHLY_PRICE_ID must be a Stripe Price ID that starts with price_, not a literal dollar amount")
+        }
 
         val customerId = existingCustomerId?.takeIf { it.isNotBlank() } ?: createCustomer(
             secretKey = configuredSecretKey,
@@ -76,6 +79,8 @@ class StripeBillingService(
                 "items[0][price]" to configuredPriceId,
                 "payment_behavior" to "default_incomplete",
                 "payment_settings[save_default_payment_method]" to "on_subscription",
+                "billing_mode[type]" to "flexible",
+                "expand[]" to "latest_invoice.confirmation_secret",
                 "expand[]" to "latest_invoice.payment_intent",
                 "metadata[athleteUserId]" to athleteUserId,
                 "metadata[payerUserId]" to payerUserId
@@ -85,9 +90,13 @@ class StripeBillingService(
         val body = json.parseToJsonElement(response).jsonObject
         val subscriptionId = body.string("id")
             ?: throw IllegalArgumentException("Stripe subscription response is missing id")
-        val clientSecret = body.obj("latest_invoice")
-            ?.obj("payment_intent")
+        val latestInvoice = body.obj("latest_invoice")
+        val clientSecret = latestInvoice
+            ?.obj("confirmation_secret")
             ?.string("client_secret")
+            ?: latestInvoice
+                ?.obj("payment_intent")
+                ?.string("client_secret")
             ?: throw IllegalArgumentException("Stripe subscription response is missing payment client secret")
 
         StripeCheckoutResult(
