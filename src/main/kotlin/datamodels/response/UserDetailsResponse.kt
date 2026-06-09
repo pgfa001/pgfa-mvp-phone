@@ -15,6 +15,7 @@ data class UserDetailsResponse(
     val phone: String? = null,
     val avatarUrl: String? = null,
     val position: String? = null,
+    val subscription: SubscriptionEntitlementResponse? = null,
     val children: List<ChildUserSummaryResponse> = emptyList()
 )
 
@@ -25,6 +26,7 @@ data class ChildUserSummaryResponse(
     val username: String,
     val dob: String,
     val gender: String? = null,
+    val subscription: SubscriptionEntitlementResponse? = null,
     val position: String? = null
 )
 

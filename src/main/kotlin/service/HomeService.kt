@@ -32,7 +32,8 @@ class HomeService(
     private val usersRepository: UsersRepository,
     private val teamsRepository: TeamsRepository,
     private val challengesRepository: ChallengesRepository,
-    private val videoStorageService: VideoStorageService
+    private val videoStorageService: VideoStorageService,
+    private val subscriptionService: SubscriptionService
 ) {
     private val weeklyStatsRequiredSubmissions = 7
 
@@ -43,7 +44,10 @@ class HomeService(
                 ?: throw IllegalArgumentException("User not found")
 
             val cards = when (user.role) {
-                UserRole.ATHLETE -> buildAthleteCards(user)
+                UserRole.ATHLETE -> {
+                    subscriptionService.requireAccessForAthleteTx(user)
+                    buildAthleteCards(user)
+                }
                 UserRole.PARENT -> buildParentCards(user)
                 UserRole.COACH -> buildCoachCards(user)
                 UserRole.ADMIN -> emptyList()
@@ -67,6 +71,7 @@ class HomeService(
             ?: throw IllegalArgumentException("User not found")
 
         val athlete = resolveHomeAthlete(user, athleteId, featureName = "stats")
+        subscriptionService.requireAccessForAthleteTx(athlete)
         val team = teamsRepository.getPrimaryTeamForUserTx(athlete.id)
             ?: throw IllegalArgumentException("Athlete is not assigned to a team")
 
@@ -183,6 +188,7 @@ class HomeService(
             ?: throw IllegalArgumentException("User not found")
 
         val athlete = resolveHomeAthlete(user, athleteId, featureName = "rank summary")
+        subscriptionService.requireAccessForAthleteTx(athlete)
         val team = teamsRepository.getPrimaryTeamForUserTx(athlete.id)
             ?: throw IllegalArgumentException("Athlete is not assigned to a team")
 
@@ -255,6 +261,7 @@ class HomeService(
             ?: throw IllegalArgumentException("User not found")
 
         val athlete = resolveHomeAthlete(user, athleteId, featureName = "previous challenges")
+        subscriptionService.requireAccessForAthleteTx(athlete)
 
         val team = teamsRepository.getPrimaryTeamForUserTx(athlete.id)
             ?: return@newSuspendedTransaction PreviousChallengesResponse(challenges = emptyList())

@@ -10,6 +10,8 @@ import com.provingground.database.tables.ClubAdminsTable
 import com.provingground.database.tables.ClubToUsersTable
 import com.provingground.database.tables.ClubsTable
 import com.provingground.database.tables.ConsentsTable
+import com.provingground.database.tables.AthleteSubscriptionStatus
+import com.provingground.database.tables.AthleteSubscriptionsTable
 import com.provingground.database.tables.ParentToChildrenTable
 import com.provingground.database.tables.TeamsTable
 import com.provingground.database.tables.TeamsToUsersTable
@@ -19,6 +21,9 @@ import com.zaxxer.hikari.HikariDataSource
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlinx.coroutines.Dispatchers
@@ -63,12 +68,53 @@ object DatabaseFactory {
                 ChallengeToClubsTable,
                 ChallengeDemoUploadIntentsTable,
                 ClubLogoUploadIntentsTable,
+                AthleteSubscriptionsTable,
             )
 
             UsersTable.update({ UsersTable.gender.isNull() }) {
                 it[gender] = "male"
             }
+
+            backfillAthleteSubscriptions()
         }
+    }
+
+    private fun backfillAthleteSubscriptions() {
+        val now = System.currentTimeMillis()
+        val trialEndsAt = now + 3L * 24L * 60L * 60L * 1000L
+        val existingSubscriptionAthleteIds = AthleteSubscriptionsTable
+            .select(AthleteSubscriptionsTable.athleteUserId)
+            .map { it[AthleteSubscriptionsTable.athleteUserId] }
+            .toSet()
+
+        UsersTable
+            .selectAll()
+            .where { UsersTable.role eq com.provingground.database.tables.UserRole.ATHLETE }
+            .map { it[UsersTable.id] }
+            .filter { athleteId -> athleteId !in existingSubscriptionAthleteIds }
+            .forEach { athleteId ->
+                val parentUserId = ParentToChildrenTable
+                    .select(ParentToChildrenTable.parentUserId)
+                    .where { ParentToChildrenTable.childUserId eq athleteId }
+                    .firstOrNull()
+                    ?.get(ParentToChildrenTable.parentUserId)
+
+                AthleteSubscriptionsTable.insert {
+                    it[id] = java.util.UUID.randomUUID()
+                    it[athleteUserId] = athleteId
+                    it[payerUserId] = parentUserId ?: athleteId
+                    it[status] = AthleteSubscriptionStatus.TRIALING
+                    it[trialStartedAt] = now
+                    it[AthleteSubscriptionsTable.trialEndsAt] = trialEndsAt
+                    it[stripeCustomerId] = null
+                    it[stripeSubscriptionId] = null
+                    it[stripePriceId] = null
+                    it[currentPeriodEndsAt] = null
+                    it[cancelAtPeriodEnd] = false
+                    it[createdAt] = now
+                    it[updatedAt] = now
+                }
+            }
     }
 }
 

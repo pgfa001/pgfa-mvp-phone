@@ -4,6 +4,7 @@ import aws.sdk.kotlin.services.s3.S3Client
 import com.provingground.database.repositories.ChallengesRepository
 import com.provingground.database.repositories.ClubsRepository
 import com.provingground.database.repositories.ConsentsRepository
+import com.provingground.database.repositories.AthleteSubscriptionsRepository
 import com.provingground.database.repositories.TeamsRepository
 import com.provingground.database.repositories.UsersRepository
 import com.provingground.routing.authRoutes
@@ -20,6 +21,8 @@ import com.provingground.service.ClubsService
 import com.provingground.service.ConsentsService
 import com.provingground.service.HomeService
 import com.provingground.service.S3VideoStorageService
+import com.provingground.service.StripeBillingService
+import com.provingground.service.SubscriptionService
 import com.provingground.service.TeamsService
 import com.provingground.service.UserProfileService
 import com.provingground.service.UserService
@@ -32,6 +35,7 @@ fun Application.configureRouting() {
     val usersRepository = UsersRepository()
     val consentRepository = ConsentsRepository()
     val challengesRepository = ChallengesRepository()
+    val athleteSubscriptionsRepository = AthleteSubscriptionsRepository()
 
     val awsRegion = System.getenv("AWS_REGION")
     val s3Client = S3Client {
@@ -43,19 +47,26 @@ fun Application.configureRouting() {
     )
 
     val passwordHasher = PasswordHasher()
+    val stripeBillingService = StripeBillingService()
+    val subscriptionService = SubscriptionService(
+        usersRepository = usersRepository,
+        clubsRepository = clubsRepository,
+        subscriptionsRepository = athleteSubscriptionsRepository,
+        stripeBillingService = stripeBillingService
+    )
 
     val clubsService = ClubsService(clubsRepository, usersRepository, s3VideoStorageService, passwordHasher)
     val teamsService = TeamsService(clubsRepository, teamsRepository, usersRepository)
 
-    val authService = AuthService(usersRepository, clubsRepository, consentRepository, passwordHasher)
+    val authService = AuthService(usersRepository, clubsRepository, consentRepository, subscriptionService, passwordHasher)
 
     val consentService = ConsentsService(consentRepository, usersRepository)
 
-    val homeService = HomeService(usersRepository, teamsRepository, challengesRepository, s3VideoStorageService)
+    val homeService = HomeService(usersRepository, teamsRepository, challengesRepository, s3VideoStorageService, subscriptionService)
 
-    val challengeService = ChallengeService(usersRepository, teamsRepository, challengesRepository, clubsRepository, s3VideoStorageService)
+    val challengeService = ChallengeService(usersRepository, teamsRepository, challengesRepository, clubsRepository, s3VideoStorageService, subscriptionService)
 
-    val userService = UserService(usersRepository, clubsRepository, teamsRepository)
+    val userService = UserService(usersRepository, clubsRepository, teamsRepository, subscriptionService)
 
     val userProfileService = UserProfileService(usersRepository, teamsRepository, challengesRepository)
 
@@ -80,7 +91,7 @@ fun Application.configureRouting() {
          */
         teamRoutes(teamsService)
 
-        subscriptionRoutes()
+        subscriptionRoutes(subscriptionService)
 
         /**
          * Home screen

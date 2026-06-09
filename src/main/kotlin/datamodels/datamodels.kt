@@ -2,6 +2,7 @@ package com.provingground.datamodels
 
 import com.provingground.database.tables.ConsentType
 import com.provingground.database.tables.ChallengeScoringType
+import com.provingground.database.tables.AthleteSubscriptionStatus
 import com.provingground.database.tables.SubscriptionType
 import com.provingground.database.tables.UserRole
 import com.provingground.database.tables.SubmissionValidationStatus
@@ -139,6 +140,22 @@ data class ChallengeUploadIntent(
     val expiresAt: Long,
     val consumedAt: Long?,
     val createdAt: Long
+)
+
+data class AthleteSubscription(
+    val id: UUID,
+    val athleteUserId: UUID,
+    val payerUserId: UUID?,
+    val status: AthleteSubscriptionStatus,
+    val trialStartedAt: Long?,
+    val trialEndsAt: Long?,
+    val stripeCustomerId: String?,
+    val stripeSubscriptionId: String?,
+    val stripePriceId: String?,
+    val currentPeriodEndsAt: Long?,
+    val cancelAtPeriodEnd: Boolean,
+    val createdAt: Long,
+    val updatedAt: Long
 )
 
 @Serializable

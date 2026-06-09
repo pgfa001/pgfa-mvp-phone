@@ -17,6 +17,7 @@ data class CurrentChallengeLeaderboardResponse(
     val clubName: String,
     val teamId: String? = null,
     val teamName: String? = null,
+    val gender: String? = null,
     val entries: List<FullLeaderboardEntryResponse>
 )
 

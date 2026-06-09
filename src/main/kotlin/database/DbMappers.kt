@@ -9,6 +9,7 @@ import com.provingground.database.tables.ChallengesTable
 import com.provingground.database.tables.ClubLogoUploadIntentsTable
 import com.provingground.database.tables.ClubsTable
 import com.provingground.database.tables.ConsentsTable
+import com.provingground.database.tables.AthleteSubscriptionsTable
 import com.provingground.database.tables.ParentToChildrenTable
 import com.provingground.database.tables.TeamsTable
 import com.provingground.database.tables.UsersTable
@@ -17,6 +18,7 @@ import com.provingground.datamodels.ChallengeClub
 import com.provingground.datamodels.ChallengeDemoUploadIntent
 import com.provingground.datamodels.ChallengeSubmission
 import com.provingground.datamodels.ChallengeUploadIntent
+import com.provingground.datamodels.AthleteSubscription
 import com.provingground.datamodels.Club
 import com.provingground.datamodels.ClubLogoUploadIntent
 import com.provingground.datamodels.Consent
@@ -163,5 +165,23 @@ fun ResultRow.toChallengeUploadIntent(): ChallengeUploadIntent {
         expiresAt = this[ChallengeUploadIntentsTable.expiresAt],
         consumedAt = this[ChallengeUploadIntentsTable.consumedAt],
         createdAt = this[ChallengeUploadIntentsTable.createdAt]
+    )
+}
+
+fun ResultRow.toAthleteSubscription(): AthleteSubscription {
+    return AthleteSubscription(
+        id = this[AthleteSubscriptionsTable.id],
+        athleteUserId = this[AthleteSubscriptionsTable.athleteUserId],
+        payerUserId = this[AthleteSubscriptionsTable.payerUserId],
+        status = this[AthleteSubscriptionsTable.status],
+        trialStartedAt = this[AthleteSubscriptionsTable.trialStartedAt],
+        trialEndsAt = this[AthleteSubscriptionsTable.trialEndsAt],
+        stripeCustomerId = this[AthleteSubscriptionsTable.stripeCustomerId],
+        stripeSubscriptionId = this[AthleteSubscriptionsTable.stripeSubscriptionId],
+        stripePriceId = this[AthleteSubscriptionsTable.stripePriceId],
+        currentPeriodEndsAt = this[AthleteSubscriptionsTable.currentPeriodEndsAt],
+        cancelAtPeriodEnd = this[AthleteSubscriptionsTable.cancelAtPeriodEnd],
+        createdAt = this[AthleteSubscriptionsTable.createdAt],
+        updatedAt = this[AthleteSubscriptionsTable.updatedAt]
     )
 }

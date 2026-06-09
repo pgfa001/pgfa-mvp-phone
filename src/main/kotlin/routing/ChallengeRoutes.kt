@@ -7,7 +7,9 @@ import com.provingground.datamodels.VerifyChallengeSubmissionRequest
 import com.provingground.datamodels.response.CreateChallengeDemoUploadUrlRequest
 import com.provingground.datamodels.response.CreateChallengeSubmissionRequest
 import com.provingground.datamodels.response.CreateChallengeSubmissionUploadUrlRequest
+import com.provingground.datamodels.response.SubscriptionRequiredResponse
 import com.provingground.service.ChallengeService
+import com.provingground.service.SubscriptionRequiredException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.jwt.JWTPrincipal
@@ -45,6 +47,14 @@ fun Route.challengeRoutes(challengeService: ChallengeService) {
                         submissionId = submissionId
                     )
                     call.respond(HttpStatusCode.OK, response)
+                } catch (e: SubscriptionRequiredException) {
+                    call.respond(
+                        HttpStatusCode.PaymentRequired,
+                        SubscriptionRequiredResponse(
+                            message = e.message ?: "Subscription required",
+                            subscription = e.entitlement
+                        )
+                    )
                 } catch (e: IllegalArgumentException) {
                     call.respond(
                         HttpStatusCode.BadRequest,
@@ -277,6 +287,14 @@ fun Route.challengeRoutes(challengeService: ChallengeService) {
                         teamIds = teamIds
                     )
                     call.respond(HttpStatusCode.OK, response)
+                } catch (e: SubscriptionRequiredException) {
+                    call.respond(
+                        HttpStatusCode.PaymentRequired,
+                        SubscriptionRequiredResponse(
+                            message = e.message ?: "Subscription required",
+                            subscription = e.entitlement
+                        )
+                    )
                 } catch (e: IllegalArgumentException) {
                     call.respond(
                         HttpStatusCode.BadRequest,
@@ -309,6 +327,14 @@ fun Route.challengeRoutes(challengeService: ChallengeService) {
                         teamId = teamId
                     )
                     call.respond(HttpStatusCode.OK, response)
+                } catch (e: SubscriptionRequiredException) {
+                    call.respond(
+                        HttpStatusCode.PaymentRequired,
+                        SubscriptionRequiredResponse(
+                            message = e.message ?: "Subscription required",
+                            subscription = e.entitlement
+                        )
+                    )
                 } catch (e: IllegalArgumentException) {
                     call.respond(
                         HttpStatusCode.BadRequest,
@@ -380,6 +406,14 @@ fun Route.challengeRoutes(challengeService: ChallengeService) {
                         request = request
                     )
                     call.respond(HttpStatusCode.OK, response)
+                } catch (e: SubscriptionRequiredException) {
+                    call.respond(
+                        HttpStatusCode.PaymentRequired,
+                        SubscriptionRequiredResponse(
+                            message = e.message ?: "Subscription required",
+                            subscription = e.entitlement
+                        )
+                    )
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ApiMessageResponse(e.message ?: "Invalid request"))
                 }
@@ -408,6 +442,14 @@ fun Route.challengeRoutes(challengeService: ChallengeService) {
                         request = request
                     )
                     call.respond(HttpStatusCode.OK, response)
+                } catch (e: SubscriptionRequiredException) {
+                    call.respond(
+                        HttpStatusCode.PaymentRequired,
+                        SubscriptionRequiredResponse(
+                            message = e.message ?: "Subscription required",
+                            subscription = e.entitlement
+                        )
+                    )
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ApiMessageResponse(e.message ?: "Invalid request"))
                 }
@@ -427,12 +469,14 @@ fun Route.challengeRoutes(challengeService: ChallengeService) {
 
                 val scope = call.request.queryParameters["scope"]
                 val teamId = call.request.queryParameters["teamId"]
+                val gender = call.request.queryParameters["gender"]
 
                 try {
                     val response = challengeService.getCurrentChallengeLeaderboard(
                         actingUserId = UUID.fromString(actingUserIdString),
                         scope = scope,
-                        teamId = teamId
+                        teamId = teamId,
+                        gender = gender
                     )
 
                     call.respond(HttpStatusCode.OK, response)

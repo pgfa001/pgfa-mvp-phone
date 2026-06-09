@@ -11,4 +11,6 @@ data class LoginResponse(
     val role: UserRole,
     val clubId: String? = null,
     val hasAcceptedRequiredConsents: Boolean,
+    val subscription: SubscriptionEntitlementResponse? = null,
+    val athleteSubscriptions: List<AthleteSubscriptionResponse> = emptyList()
 )

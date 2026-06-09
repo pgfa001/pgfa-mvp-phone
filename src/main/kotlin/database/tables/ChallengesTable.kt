@@ -71,6 +71,7 @@ object ChallengeDemoUploadIntentsTable : Table("challenge_demo_upload_intents") 
 
 enum class SubmissionValidationStatus {
     NOT_VALIDATED,
+    COACH_VALIDATED,
     VALIDATED,
     INVALID
 }

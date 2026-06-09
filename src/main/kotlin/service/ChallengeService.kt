@@ -51,6 +51,7 @@ class ChallengeService(
     private val challengesRepository: ChallengesRepository,
     private val clubsRepository: ClubsRepository,
     private val videoStorageService: VideoStorageService,
+    private val subscriptionService: SubscriptionService,
 ) {
 
     suspend fun getChallengeDetails(
@@ -423,6 +424,7 @@ class ChallengeService(
             athleteId = request.athleteId,
             teamId = team.id
         )
+        subscriptionService.requireAccessForAthleteTx(athlete)
 
         val uploadIntent = challengesRepository.getUploadIntentByObjectKeyTx(request.objectKey)
             ?: throw IllegalArgumentException("Upload intent not found")
@@ -537,6 +539,10 @@ class ChallengeService(
             }
         }
 
+        if (actingUser.role == UserRole.ATHLETE || actingUser.role == UserRole.PARENT) {
+            subscriptionService.requireAccessForAthleteTx(athlete)
+        }
+
         val readUrl = videoStorageService.createReadUrl(
             objectKey = submission.videoObjectKey,
             expiresInSeconds = 900
@@ -572,9 +578,17 @@ class ChallengeService(
 
         if (
             request.validationStatus != SubmissionValidationStatus.VALIDATED &&
+            request.validationStatus != SubmissionValidationStatus.COACH_VALIDATED &&
             request.validationStatus != SubmissionValidationStatus.INVALID
         ) {
-            throw IllegalArgumentException("validationStatus must be VALIDATED or INVALID")
+            throw IllegalArgumentException("validationStatus must be VALIDATED, COACH_VALIDATED, or INVALID")
+        }
+
+        if (
+            request.validationStatus == SubmissionValidationStatus.COACH_VALIDATED &&
+            actingUser.role != UserRole.COACH
+        ) {
+            throw IllegalArgumentException("COACH_VALIDATED can only be set by coaches")
         }
 
         val submissionUuid = try {
@@ -605,15 +619,24 @@ class ChallengeService(
             throw IllegalArgumentException("Admin may only verify submissions for assigned clubs")
         }
 
+        val validationStatus = if (
+            actingUser.role == UserRole.COACH &&
+            request.validationStatus == SubmissionValidationStatus.VALIDATED
+        ) {
+            SubmissionValidationStatus.COACH_VALIDATED
+        } else {
+            request.validationStatus
+        }
+
         challengesRepository.updateSubmissionValidationStatusTx(
             id = submission.id,
-            validationStatus = request.validationStatus,
+            validationStatus = validationStatus,
             validatingUserId = actingUserId
         )
 
         VerifyChallengeSubmissionResponse(
             submissionId = submission.id.toString(),
-            validationStatus = request.validationStatus
+            validationStatus = validationStatus
         )
     }
 
@@ -641,6 +664,7 @@ class ChallengeService(
             athleteId = request.athleteId,
             teamId = team.id
         )
+        subscriptionService.requireAccessForAthleteTx(athlete)
 
         val safeFileName = request.fileName.substringAfterLast('/').substringAfterLast('\\')
         val extension = safeFileName.substringAfterLast('.', "")
@@ -732,6 +756,7 @@ class ChallengeService(
         challenge: Challenge,
         requestedTeamIds: List<UUID>
     ): List<ChallengeTeamViewResponse> {
+        subscriptionService.requireAccessForAthleteTx(athlete)
         val athleteTeams = teamsRepository.getTeamsForUserTx(athlete.id)
         val athleteTeamIds = athleteTeams.map { it.id }.toSet()
 
@@ -790,6 +815,7 @@ class ChallengeService(
             }
 
             val child = matchingChildren.first()
+            subscriptionService.requireAccessForAthleteTx(child)
 
             val submissions = challengesRepository.getSubmissionsByUserAndChallengeTx(
                 userId = child.id,
@@ -864,6 +890,7 @@ class ChallengeService(
         athlete: User,
         challenge: Challenge
     ): GetMyChallengeSubmissionsResponse {
+        subscriptionService.requireAccessForAthleteTx(athlete)
         val team = teamsRepository.getPrimaryTeamForUserTx(athlete.id)
             ?: throw IllegalArgumentException("Athlete is not assigned to a team")
 
@@ -919,6 +946,7 @@ class ChallengeService(
         }
 
         val child = matchingChildren.first()
+        subscriptionService.requireAccessForAthleteTx(child)
 
         val submissions = challengesRepository.getSubmissionsByUserAndChallengeTx(
             userId = child.id,
@@ -1248,7 +1276,8 @@ class ChallengeService(
     suspend fun getCurrentChallengeLeaderboard(
         actingUserId: UUID,
         scope: String?,
-        teamId: String?
+        teamId: String?,
+        gender: String?
     ): CurrentChallengeLeaderboardResponse = newSuspendedTransaction(Dispatchers.IO) {
         val actingUser = usersRepository.getByIdTx(actingUserId)
             ?: throw IllegalArgumentException("User not found")
@@ -1257,6 +1286,11 @@ class ChallengeService(
             null, "", "CLUB" -> LeaderboardScope.CLUB
             "TEAM" -> LeaderboardScope.TEAM
             else -> throw IllegalArgumentException("Invalid leaderboard scope")
+        }
+
+        val genderFilter = gender?.trim()?.takeIf { it.isNotBlank() }?.lowercase()
+        if (genderFilter != null && requestedScope != LeaderboardScope.CLUB) {
+            throw IllegalArgumentException("gender filter is only supported for club leaderboard")
         }
 
         val userClubs = clubsRepository.getClubsForUserTx(actingUser.id)
@@ -1305,7 +1339,15 @@ class ChallengeService(
         val athleteIds = filteredSubmissions.map { it.userId }.distinct()
         val usersById = usersRepository.getByIdsTx(athleteIds).associateBy { it.id }
 
-        val groupedByAthlete = filteredSubmissions.groupBy { it.userId }
+        val genderFilteredSubmissions = if (genderFilter == null) {
+            filteredSubmissions
+        } else {
+            filteredSubmissions.filter { submission ->
+                usersById[submission.userId]?.gender?.trim()?.lowercase() == genderFilter
+            }
+        }
+
+        val groupedByAthlete = genderFilteredSubmissions.groupBy { it.userId }
 
         val entriesWithoutRank = groupedByAthlete.mapNotNull { (athleteId, submissions) ->
             val athlete = usersById[athleteId] ?: return@mapNotNull null
@@ -1340,6 +1382,7 @@ class ChallengeService(
             clubName = club.name,
             teamId = selectedTeam?.id?.toString(),
             teamName = selectedTeam?.name,
+            gender = genderFilter,
             entries = sortedEntries.mapIndexed { index, entry ->
                 entry.copy(rank = index + 1)
             }

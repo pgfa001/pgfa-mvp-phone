@@ -1,7 +1,9 @@
 package com.provingground.routing
 
 import com.provingground.datamodels.ApiMessageResponse
+import com.provingground.datamodels.response.SubscriptionRequiredResponse
 import com.provingground.service.HomeService
+import com.provingground.service.SubscriptionRequiredException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -32,6 +34,14 @@ fun Route.homeRoutes(homeService: HomeService) {
                 try {
                     val response = homeService.getHomeScreen(UUID.fromString(userIdString))
                     call.respond(HttpStatusCode.OK, response)
+                } catch (e: SubscriptionRequiredException) {
+                    call.respond(
+                        HttpStatusCode.PaymentRequired,
+                        SubscriptionRequiredResponse(
+                            message = e.message ?: "Subscription required",
+                            subscription = e.entitlement
+                        )
+                    )
                 } catch (e: IllegalArgumentException) {
                     call.respond(
                         HttpStatusCode.BadRequest,
@@ -69,6 +79,14 @@ fun Route.homeRoutes(homeService: HomeService) {
                         athleteId = athleteId
                     )
                     call.respond(HttpStatusCode.OK, response)
+                } catch (e: SubscriptionRequiredException) {
+                    call.respond(
+                        HttpStatusCode.PaymentRequired,
+                        SubscriptionRequiredResponse(
+                            message = e.message ?: "Subscription required",
+                            subscription = e.entitlement
+                        )
+                    )
                 } catch (e: IllegalArgumentException) {
                     call.respond(
                         HttpStatusCode.BadRequest,
@@ -99,6 +117,14 @@ fun Route.homeRoutes(homeService: HomeService) {
                         athleteId = athleteId
                     )
                     call.respond(HttpStatusCode.OK, response)
+                } catch (e: SubscriptionRequiredException) {
+                    call.respond(
+                        HttpStatusCode.PaymentRequired,
+                        SubscriptionRequiredResponse(
+                            message = e.message ?: "Subscription required",
+                            subscription = e.entitlement
+                        )
+                    )
                 } catch (e: IllegalArgumentException) {
                     call.respond(
                         HttpStatusCode.BadRequest,
@@ -127,6 +153,14 @@ fun Route.homeRoutes(homeService: HomeService) {
                         athleteId = athleteId
                     )
                     call.respond(HttpStatusCode.OK, response)
+                } catch (e: SubscriptionRequiredException) {
+                    call.respond(
+                        HttpStatusCode.PaymentRequired,
+                        SubscriptionRequiredResponse(
+                            message = e.message ?: "Subscription required",
+                            subscription = e.entitlement
+                        )
+                    )
                 } catch (e: IllegalArgumentException) {
                     call.respond(
                         HttpStatusCode.BadRequest,

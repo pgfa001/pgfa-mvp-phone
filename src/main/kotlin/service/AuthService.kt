@@ -18,6 +18,7 @@ class AuthService(
     private val usersRepository: UsersRepository,
     private val clubsRepository: ClubsRepository,
     private val consentsRepository: ConsentsRepository,
+    private val subscriptionService: SubscriptionService,
     private val passwordHasher: PasswordHasher
 ) {
     suspend fun login(request: LoginRequest): LoginResponse? = newSuspendedTransaction(Dispatchers.IO) {
@@ -42,6 +43,18 @@ class AuthService(
             role = user.role,
             clubId = getLoginClubIdTx(user),
             hasAcceptedRequiredConsents = hasAcceptedRequiredConsents,
+            subscription = if (user.role == UserRole.ATHLETE) {
+                subscriptionService.getEntitlementForAthleteTx(user)
+            } else {
+                null
+            },
+            athleteSubscriptions = if (user.role == UserRole.PARENT) {
+                usersRepository.getChildrenForParentTx(user.id)
+                    .filter { it.role == UserRole.ATHLETE }
+                    .map { subscriptionService.getAthleteSubscriptionResponseTx(it) }
+            } else {
+                emptyList()
+            }
         )
     }
 
@@ -106,6 +119,13 @@ class AuthService(
 
             usersRepository.createTx(primaryUser)
             clubsRepository.addUserToClubTx(primaryUser.id, clubId, createdAt = now)
+            if (role == UserRole.ATHLETE) {
+                subscriptionService.createTrialForAthleteTx(
+                    athleteUserId = primaryUser.id,
+                    payerUserId = primaryUser.id,
+                    now = now
+                )
+            }
 
             if (role == UserRole.PARENT) {
                 request.childAccounts.forEach { childRequest ->
@@ -140,6 +160,11 @@ class AuthService(
                         childUserId = childUser.id,
                         createdAt = childNow
                     )
+                    subscriptionService.createTrialForAthleteTx(
+                        athleteUserId = childUser.id,
+                        payerUserId = primaryUser.id,
+                        now = childNow
+                    )
                 }
             }
 
@@ -151,7 +176,19 @@ class AuthService(
                 username = primaryUser.username,
                 role = primaryUser.role,
                 clubId = clubId.toString(),
-                hasAcceptedRequiredConsents = false
+                hasAcceptedRequiredConsents = false,
+                subscription = if (primaryUser.role == UserRole.ATHLETE) {
+                    subscriptionService.getEntitlementForAthleteTx(primaryUser)
+                } else {
+                    null
+                },
+                athleteSubscriptions = if (primaryUser.role == UserRole.PARENT) {
+                    usersRepository.getChildrenForParentTx(primaryUser.id)
+                        .filter { it.role == UserRole.ATHLETE }
+                        .map { subscriptionService.getAthleteSubscriptionResponseTx(it) }
+                } else {
+                    emptyList()
+                }
             )
         }
 

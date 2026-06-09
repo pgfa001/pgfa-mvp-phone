@@ -15,7 +15,8 @@ import java.util.UUID
 class UserService(
     private val usersRepository: UsersRepository,
     private val clubsRepository: ClubsRepository,
-    private val teamsRepository: TeamsRepository
+    private val teamsRepository: TeamsRepository,
+    private val subscriptionService: SubscriptionService
 ) {
     suspend fun searchUsers(
         actingUserId: UUID,
@@ -149,6 +150,7 @@ class UserService(
                     username = child.username,
                     dob = child.dob,
                     gender = child.gender,
+                    subscription = subscriptionService.getEntitlementForAthleteTx(child),
                     position = child.position
                 )
             }
@@ -167,6 +169,11 @@ class UserService(
             phone = user.phone,
             avatarUrl = user.avatarUrl,
             position = user.position,
+            subscription = if (user.role == UserRole.ATHLETE) {
+                subscriptionService.getEntitlementForAthleteTx(user)
+            } else {
+                null
+            },
             children = children
         )
     }
