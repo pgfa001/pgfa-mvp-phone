@@ -2,6 +2,7 @@ package com.provingground.routing
 
 import com.provingground.datamodels.ApiMessageResponse
 import com.provingground.datamodels.EditUserDetailsRequest
+import com.provingground.datamodels.ResetUserPasswordRequest
 import com.provingground.service.UserProfileService
 import com.provingground.service.UserService
 import io.ktor.http.HttpStatusCode
@@ -12,6 +13,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import java.util.UUID
@@ -113,6 +115,43 @@ fun Route.userRoutes(
                 try {
                     val response = userProfileService.getMyProfile(
                         actingUserId = UUID.fromString(actingUserIdString)
+                    )
+                    call.respond(HttpStatusCode.OK, response)
+                } catch (e: IllegalArgumentException) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ApiMessageResponse(e.message ?: "Invalid request")
+                    )
+                }
+            }
+
+            post("/{userId}/reset-password") {
+                val principal = call.principal<JWTPrincipal>()
+                val actingUserIdString = principal?.payload?.getClaim("userId")?.asString()
+
+                if (actingUserIdString.isNullOrBlank()) {
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ApiMessageResponse("Invalid token")
+                    )
+                    return@post
+                }
+
+                val userId = call.parameters["userId"]
+                if (userId.isNullOrBlank()) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ApiMessageResponse("Missing userId")
+                    )
+                    return@post
+                }
+
+                try {
+                    val request = call.receive<ResetUserPasswordRequest>()
+                    val response = userService.resetUserPassword(
+                        actingUserId = UUID.fromString(actingUserIdString),
+                        requestedUserId = userId,
+                        request = request
                     )
                     call.respond(HttpStatusCode.OK, response)
                 } catch (e: IllegalArgumentException) {

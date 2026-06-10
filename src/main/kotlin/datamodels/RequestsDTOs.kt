@@ -69,6 +69,11 @@ data class EditUserDetailsRequest(
 )
 
 @Serializable
+data class ResetUserPasswordRequest(
+    val password: String? = null
+)
+
+@Serializable
 data class VerifyChallengeSubmissionRequest(
     val validationStatus: SubmissionValidationStatus
 )

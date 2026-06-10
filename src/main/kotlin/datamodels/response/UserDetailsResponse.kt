@@ -50,3 +50,11 @@ data class UserSearchResultResponse(
     val position: String? = null,
     val clubIds: List<String>
 )
+
+@Serializable
+data class ResetUserPasswordResponse(
+    val userId: String,
+    val username: String,
+    val temporaryPassword: String,
+    val message: String
+)

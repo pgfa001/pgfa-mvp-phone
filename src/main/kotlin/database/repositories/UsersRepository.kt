@@ -158,6 +158,16 @@ class UsersRepository {
         updateTx(id, user)
     }
 
+    fun updatePasswordTx(id: UUID, passwordHash: String): Boolean {
+        return UsersTable.update({ UsersTable.id eq id }) {
+            it[password] = passwordHash
+        } > 0
+    }
+
+    suspend fun updatePassword(id: UUID, passwordHash: String): Boolean = dbQuery {
+        updatePasswordTx(id, passwordHash)
+    }
+
     fun deleteTx(id: UUID): Boolean {
         return UsersTable.deleteWhere { UsersTable.id eq id } > 0
     }
