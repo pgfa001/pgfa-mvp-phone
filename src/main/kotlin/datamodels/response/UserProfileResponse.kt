@@ -9,6 +9,9 @@ data class UserProfileResponse(
     val name: String,
     val role: UserRole,
     val age: Int,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null,
     val athleteProfile: AthleteProfileResponse? = null
 )
 

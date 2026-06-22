@@ -28,6 +28,9 @@ class UsersRepository {
             it[gender] = user.gender
             it[avatarUrl] = user.avatarUrl
             it[position] = user.position
+            it[state] = user.state
+            it[town] = user.town
+            it[socialMediaHandle] = user.socialMediaHandle
             it[createdAt] = user.createdAt
         }
         return user
@@ -151,6 +154,9 @@ class UsersRepository {
             it[gender] = user.gender
             it[avatarUrl] = user.avatarUrl
             it[position] = user.position
+            it[state] = user.state
+            it[town] = user.town
+            it[socialMediaHandle] = user.socialMediaHandle
         } > 0
     }
 

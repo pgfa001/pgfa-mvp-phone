@@ -22,6 +22,9 @@ object UsersTable : Table("users") {
     val gender = varchar("gender", 50).nullable()
     val avatarUrl = varchar("avatarUrl", 255).nullable()
     val position = varchar("position", 255).nullable()
+    val state = varchar("state", 255).nullable()
+    val town = varchar("town", 255).nullable()
+    val socialMediaHandle = varchar("socialMediaHandle", 255).nullable()
     val createdAt = long("created_at")
 
     override val primaryKey = PrimaryKey(id)

@@ -67,6 +67,9 @@ data class User(
     val gender: String?,
     val avatarUrl: String?,
     val position: String?,
+    val state: String?,
+    val town: String?,
+    val socialMediaHandle: String?,
     val createdAt: Long
 )
 

@@ -5,7 +5,8 @@ import org.jetbrains.exposed.sql.Table
 enum class ConsentType {
     MEDIA_RELEASE,
     LIABILITY,
-    TERMS_AND_CONDITIONS;
+    TERMS_AND_CONDITIONS,
+    TERMS_OF_SERVICE;
 }
 
 object ConsentsTable : Table("consents") {

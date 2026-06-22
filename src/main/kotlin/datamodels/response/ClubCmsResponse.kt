@@ -69,7 +69,10 @@ data class CreateClubAdminRequest(
     val password: String,
     val email: String,
     val phone: String,
-    val dob: String
+    val dob: String,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null
 )
 
 @Serializable
@@ -81,5 +84,8 @@ data class ClubAdminResponse(
     val email: String,
     val phone: String,
     val role: UserRole,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null,
     val createdAt: Long
 )

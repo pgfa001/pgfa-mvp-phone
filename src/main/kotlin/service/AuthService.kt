@@ -114,6 +114,9 @@ class AuthService(
                 gender = if (role == UserRole.ATHLETE) request.gender?.trim() else request.gender?.trim()?.takeIf { it.isNotBlank() },
                 avatarUrl = null,
                 position = if (role == UserRole.ATHLETE) request.position else null,
+                state = request.state.trimToNull(),
+                town = request.town.trimToNull(),
+                socialMediaHandle = request.socialMediaHandle.trimToNull(),
                 createdAt = now
             )
 
@@ -150,6 +153,9 @@ class AuthService(
                         gender = childRequest.gender.trim(),
                         avatarUrl = null,
                         position = childRequest.position,
+                        state = childRequest.state.trimToNull(),
+                        town = childRequest.town.trimToNull(),
+                        socialMediaHandle = childRequest.socialMediaHandle.trimToNull(),
                         createdAt = childNow
                     )
 
@@ -204,4 +210,7 @@ class AuthService(
 
         return clubId?.toString()
     }
+
+    private fun String?.trimToNull(): String? =
+        this?.trim()?.takeIf { it.isNotBlank() }
 }

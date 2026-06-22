@@ -78,6 +78,9 @@ fun ResultRow.toUser(): User {
         gender = this[UsersTable.gender],
         avatarUrl = this[UsersTable.avatarUrl],
         position = this[UsersTable.position],
+        state = this[UsersTable.state],
+        town = this[UsersTable.town],
+        socialMediaHandle = this[UsersTable.socialMediaHandle],
         createdAt = this[UsersTable.createdAt]
     )
 }

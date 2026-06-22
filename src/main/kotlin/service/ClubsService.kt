@@ -126,6 +126,9 @@ class ClubsService(
             gender = null,
             avatarUrl = null,
             position = null,
+            state = request.state.trimToNull(),
+            town = request.town.trimToNull(),
+            socialMediaHandle = request.socialMediaHandle.trimToNull(),
             createdAt = now
         )
 
@@ -141,6 +144,9 @@ class ClubsService(
             email = admin.email ?: "",
             phone = admin.phone ?: "",
             role = admin.role,
+            state = admin.state,
+            town = admin.town,
+            socialMediaHandle = admin.socialMediaHandle,
             createdAt = admin.createdAt
         )
     }
@@ -351,4 +357,7 @@ class ClubsService(
                 }
             )
         }
+
+    private fun String?.trimToNull(): String? =
+        this?.trim()?.takeIf { it.isNotBlank() }
 }

@@ -15,6 +15,9 @@ data class UserDetailsResponse(
     val phone: String? = null,
     val avatarUrl: String? = null,
     val position: String? = null,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null,
     val subscription: SubscriptionEntitlementResponse? = null,
     val children: List<ChildUserSummaryResponse> = emptyList()
 )
@@ -27,7 +30,10 @@ data class ChildUserSummaryResponse(
     val dob: String,
     val gender: String? = null,
     val subscription: SubscriptionEntitlementResponse? = null,
-    val position: String? = null
+    val position: String? = null,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null
 )
 
 @Serializable
@@ -48,6 +54,9 @@ data class UserSearchResultResponse(
     val phone: String? = null,
     val avatarUrl: String? = null,
     val position: String? = null,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null,
     val clubIds: List<String>
 )
 

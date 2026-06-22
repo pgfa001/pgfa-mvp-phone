@@ -36,6 +36,9 @@ class UserProfileService(
             name = user.name,
             role = user.role,
             age = age,
+            state = user.state,
+            town = user.town,
+            socialMediaHandle = user.socialMediaHandle,
             athleteProfile = athleteProfile
         )
     }

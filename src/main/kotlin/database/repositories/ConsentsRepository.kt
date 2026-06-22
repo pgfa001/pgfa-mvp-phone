@@ -55,9 +55,7 @@ class ConsentsRepository {
             .map { it[ConsentsTable.consentType] }
             .toSet()
 
-        return consentTypes.contains(ConsentType.MEDIA_RELEASE) &&
-                consentTypes.contains(ConsentType.LIABILITY) &&
-                consentTypes.contains(ConsentType.TERMS_AND_CONDITIONS)
+        return consentTypes.contains(ConsentType.TERMS_OF_SERVICE)
     }
 
     fun getByUserIdAndTypeTx(userId: UUID, consentType: ConsentType): Consent? {

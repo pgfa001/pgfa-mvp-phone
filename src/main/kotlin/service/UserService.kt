@@ -124,6 +124,9 @@ class UserService(
                     phone = user.phone,
                     avatarUrl = user.avatarUrl,
                     position = user.position,
+                    state = user.state,
+                    town = user.town,
+                    socialMediaHandle = user.socialMediaHandle,
                     clubIds = clubsRepository.getClubsForUserTx(user.id).map { it.id.toString() }
                 )
             }
@@ -156,7 +159,10 @@ class UserService(
                     dob = child.dob,
                     gender = child.gender,
                     subscription = subscriptionService.getEntitlementForAthleteTx(child),
-                    position = child.position
+                    position = child.position,
+                    state = child.state,
+                    town = child.town,
+                    socialMediaHandle = child.socialMediaHandle
                 )
             }
         } else {
@@ -174,6 +180,9 @@ class UserService(
             phone = user.phone,
             avatarUrl = user.avatarUrl,
             position = user.position,
+            state = user.state,
+            town = user.town,
+            socialMediaHandle = user.socialMediaHandle,
             subscription = if (user.role == UserRole.ATHLETE) {
                 subscriptionService.getEntitlementForAthleteTx(user)
             } else {

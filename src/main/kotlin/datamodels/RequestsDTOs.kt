@@ -22,6 +22,9 @@ data class CreateUserAccountRequest(
     val dob: String, // MM/dd/yyyy
     val gender: String? = null,
     val position: String? = null,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null,
     val childAccounts: List<CreateChildAccountRequest> = emptyList()
 )
 
@@ -32,7 +35,10 @@ data class CreateChildAccountRequest(
     val password: String,
     val dob: String, // MM/dd/yyyy
     val gender: String? = null,
-    val position: String
+    val position: String,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null
 )
 
 @Serializable
@@ -65,7 +71,10 @@ data class EditUserDetailsRequest(
     val email: String? = null,
     val phone: String? = null,
     val avatarUrl: String? = null,
-    val position: String? = null
+    val position: String? = null,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null
 )
 
 @Serializable

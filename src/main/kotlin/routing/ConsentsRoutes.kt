@@ -10,12 +10,17 @@ import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 
 fun Route.consentRoutes(consentsService: ConsentsService) {
     authenticate("auth-jwt") {
         route("/consents") {
+            get("/required") {
+                call.respond(HttpStatusCode.OK, consentsService.getRequiredConsents())
+            }
+
             post("/accept") {
                 val principal = call.principal<JWTPrincipal>()
                 val userIdClaim = principal?.payload?.getClaim("userId")?.asString()
