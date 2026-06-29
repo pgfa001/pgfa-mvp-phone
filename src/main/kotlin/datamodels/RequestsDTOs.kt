@@ -83,6 +83,69 @@ data class ResetUserPasswordRequest(
 )
 
 @Serializable
+data class CreateSuperAdminRequest(
+    val name: String,
+    val username: String,
+    val password: String,
+    val email: String,
+    val phone: String,
+    val dob: String,
+    val gender: String? = null,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null
+)
+
+@Serializable
+data class CreateCmsUserRequest(
+    val clubId: String,
+    val name: String,
+    val username: String,
+    val password: String,
+    val email: String? = null,
+    val phone: String? = null,
+    val role: String,
+    val dob: String,
+    val gender: String? = null,
+    val position: String? = null,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null,
+    val teamIds: List<String> = emptyList(),
+    val childAccounts: List<CreateCmsChildAccountRequest> = emptyList()
+)
+
+@Serializable
+data class CreateCmsChildAccountRequest(
+    val name: String,
+    val username: String,
+    val password: String,
+    val dob: String,
+    val gender: String? = null,
+    val position: String,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null,
+    val teamIds: List<String> = emptyList()
+)
+
+@Serializable
+data class UpdateUserUsernameRequest(
+    val username: String
+)
+
+@Serializable
+data class UpdateUserClubRequest(
+    val clubId: String? = null,
+    val clubIds: List<String>? = null
+)
+
+@Serializable
+data class UpdateUserTeamsRequest(
+    val teamIds: List<String>
+)
+
+@Serializable
 data class VerifyChallengeSubmissionRequest(
     val validationStatus: SubmissionValidationStatus
 )

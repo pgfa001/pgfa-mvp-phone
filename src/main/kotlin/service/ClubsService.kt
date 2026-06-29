@@ -94,8 +94,21 @@ class ClubsService(
             throw IllegalArgumentException("Invalid clubId")
         }
 
-        val club = clubsRepository.getByIdTx(clubUuid)
+        val primaryClub = clubsRepository.getByIdTx(clubUuid)
             ?: throw IllegalArgumentException("Club not found")
+
+        val clubUuids = (listOf(clubUuid) + request.clubIds.map { requestedClubId ->
+            try {
+                UUID.fromString(requestedClubId)
+            } catch (_: Exception) {
+                throw IllegalArgumentException("Invalid clubId: $requestedClubId")
+            }
+        }).distinct()
+
+        clubUuids.forEach { requestedClubId ->
+            clubsRepository.getByIdTx(requestedClubId)
+                ?: throw IllegalArgumentException("Club not found: $requestedClubId")
+        }
 
         if (request.name.isBlank()) throw IllegalArgumentException("Name is required")
         if (request.username.isBlank()) throw IllegalArgumentException("Username is required")
@@ -133,12 +146,15 @@ class ClubsService(
         )
 
         usersRepository.createTx(admin)
-        clubsRepository.addUserToClubTx(admin.id, club.id, createdAt = now)
-        clubsRepository.addClubAdminTx(admin.id, club.id, createdAt = now)
+        clubUuids.forEach { adminClubId ->
+            clubsRepository.addUserToClubTx(admin.id, adminClubId, createdAt = now)
+            clubsRepository.addClubAdminTx(admin.id, adminClubId, createdAt = now)
+        }
 
         ClubAdminResponse(
             id = admin.id.toString(),
-            clubId = club.id.toString(),
+            clubId = primaryClub.id.toString(),
+            clubIds = clubUuids.map { it.toString() },
             name = admin.name,
             username = admin.username,
             email = admin.email ?: "",

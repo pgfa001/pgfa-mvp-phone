@@ -1,8 +1,18 @@
 package com.provingground.database.repositories
 
 import com.provingground.database.dbQuery
+import com.provingground.database.tables.AthleteSubscriptionStatus
+import com.provingground.database.tables.AthleteSubscriptionsTable
+import com.provingground.database.tables.ChallengeDemoUploadIntentsTable
+import com.provingground.database.tables.ChallengeSubmissionsTable
+import com.provingground.database.tables.ChallengeUploadIntentsTable
+import com.provingground.database.tables.ChallengesTable
+import com.provingground.database.tables.ClubAdminsTable
+import com.provingground.database.tables.ClubLogoUploadIntentsTable
 import com.provingground.database.tables.ClubToUsersTable
+import com.provingground.database.tables.ConsentsTable
 import com.provingground.database.tables.ParentToChildrenTable
+import com.provingground.database.tables.TeamsToUsersTable
 import com.provingground.database.tables.UserRole
 import com.provingground.database.tables.UsersTable
 import com.provingground.database.toParentChildRelationship
@@ -172,6 +182,66 @@ class UsersRepository {
 
     suspend fun updatePassword(id: UUID, passwordHash: String): Boolean = dbQuery {
         updatePasswordTx(id, passwordHash)
+    }
+
+    fun updateUsernameTx(id: UUID, username: String): Boolean {
+        return UsersTable.update({ UsersTable.id eq id }) {
+            it[UsersTable.username] = username
+        } > 0
+    }
+
+    suspend fun updateUsername(id: UUID, username: String): Boolean = dbQuery {
+        updateUsernameTx(id, username)
+    }
+
+    fun deleteUserFullyTx(id: UUID): Boolean {
+        if (ChallengesTable.select(ChallengesTable.id).where { ChallengesTable.createdBy eq id }.any()) {
+            throw IllegalArgumentException("User cannot be deleted because they have created challenges")
+        }
+
+        val hasStartedStripeSubscription = AthleteSubscriptionsTable
+            .select(AthleteSubscriptionsTable.id)
+            .where {
+                (AthleteSubscriptionsTable.athleteUserId eq id) and
+                        (AthleteSubscriptionsTable.stripeSubscriptionId.isNotNull()) and
+                        (AthleteSubscriptionsTable.status inList listOf(
+                            AthleteSubscriptionStatus.TRIALING,
+                            AthleteSubscriptionStatus.ACTIVE,
+                            AthleteSubscriptionStatus.PAST_DUE
+                        ))
+            }
+            .any()
+        if (hasStartedStripeSubscription) {
+            throw IllegalArgumentException("User cannot be deleted until their Stripe subscription is canceled")
+        }
+
+        ChallengeSubmissionsTable.update({ ChallengeSubmissionsTable.validatedBy eq id }) {
+            it[validatedBy] = null
+        }
+        AthleteSubscriptionsTable.update({ AthleteSubscriptionsTable.payerUserId eq id }) {
+            it[payerUserId] = null
+        }
+
+        ChallengeUploadIntentsTable.deleteWhere {
+            (actingUserId eq id) or (athleteUserId eq id)
+        }
+        ChallengeDemoUploadIntentsTable.deleteWhere { actingUserId eq id }
+        ClubLogoUploadIntentsTable.deleteWhere { actingUserId eq id }
+        ChallengeSubmissionsTable.deleteWhere { userId eq id }
+        AthleteSubscriptionsTable.deleteWhere { athleteUserId eq id }
+        ConsentsTable.deleteWhere { userId eq id }
+        TeamsToUsersTable.deleteWhere { userId eq id }
+        ClubAdminsTable.deleteWhere { userId eq id }
+        ClubToUsersTable.deleteWhere { userId eq id }
+        ParentToChildrenTable.deleteWhere {
+            (parentUserId eq id) or (childUserId eq id)
+        }
+
+        return UsersTable.deleteWhere { UsersTable.id eq id } > 0
+    }
+
+    suspend fun deleteUserFully(id: UUID): Boolean = dbQuery {
+        deleteUserFullyTx(id)
     }
 
     fun deleteTx(id: UUID): Boolean {

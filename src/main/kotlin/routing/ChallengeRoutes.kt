@@ -359,6 +359,7 @@ fun Route.challengeRoutes(challengeService: ChallengeService) {
                 }
 
                 val teamId = call.request.queryParameters["teamId"]
+                val clubId = call.request.queryParameters["clubId"]
                 val limitParam = call.request.queryParameters["limit"]
                 val limit = if (limitParam.isNullOrBlank()) {
                     null
@@ -372,6 +373,7 @@ fun Route.challengeRoutes(challengeService: ChallengeService) {
                         actingUserId = UUID.fromString(actingUserIdString),
                         challengeId = challengeId,
                         teamId = teamId,
+                        clubId = clubId,
                         limit = limit
                     )
                     call.respond(HttpStatusCode.OK, response)

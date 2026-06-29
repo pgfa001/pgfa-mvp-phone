@@ -169,6 +169,7 @@ class ChallengeService(
         actingUserId: UUID,
         challengeId: String,
         teamId: String?,
+        clubId: String?,
         limit: Int? = null
     ): GetChallengeReviewSubmissionsResponse = newSuspendedTransaction(Dispatchers.IO) {
         val actingUser = usersRepository.getByIdTx(actingUserId)
@@ -195,9 +196,24 @@ class ChallengeService(
             }
         } else null
 
+        val requestedClubUuid = if (!clubId.isNullOrBlank()) {
+            try {
+                UUID.fromString(clubId)
+            } catch (_: Exception) {
+                throw IllegalArgumentException("Invalid clubId")
+            }
+        } else null
+
+        if (requestedClubUuid != null && clubsRepository.getByIdTx(requestedClubUuid) == null) {
+            throw IllegalArgumentException("Club not found")
+        }
+
         val submissions: List<ChallengeSubmission> = when (actingUser.role) {
             UserRole.COACH -> {
-                val coachedTeamIds = teamsRepository.getTeamsForUserTx(actingUser.id)
+                val coachedTeams = teamsRepository.getTeamsForUserTx(actingUser.id)
+                val coachedTeamIds = coachedTeams.map { it.id }.toSet()
+                val visibleTeamIds = coachedTeams
+                    .filter { team -> requestedClubUuid == null || team.clubId == requestedClubUuid }
                     .map { it.id }
                     .toSet()
 
@@ -206,13 +222,18 @@ class ChallengeService(
                         throw IllegalArgumentException("Coach may only review submissions for teams they coach")
                     }
 
+                    val requestedTeam = coachedTeams.first { it.id == requestedTeamUuid }
+                    if (requestedClubUuid != null && requestedTeam.clubId != requestedClubUuid) {
+                        throw IllegalArgumentException("Team does not belong to club")
+                    }
+
                     challengesRepository.getAllSubmissionsForChallengeAndTeamTx(
                         challengeId = challenge.id,
                         teamId = requestedTeamUuid
                     )
                 } else {
                     challengesRepository.getSubmissionsByChallengeIdTx(challenge.id)
-                        .filter { it.teamId in coachedTeamIds }
+                        .filter { it.teamId in visibleTeamIds }
                 }
             }
 
@@ -222,11 +243,20 @@ class ChallengeService(
                     throw IllegalArgumentException("Admin is not assigned to a club")
                 }
 
+                val visibleClubIds = if (requestedClubUuid != null) {
+                    if (requestedClubUuid !in adminClubIds) {
+                        throw IllegalArgumentException("Admin may only review submissions for assigned clubs")
+                    }
+                    setOf(requestedClubUuid)
+                } else {
+                    adminClubIds
+                }
+
                 if (requestedTeamUuid != null) {
                     val requestedTeam = teamsRepository.getByIdTx(requestedTeamUuid)
                         ?: throw IllegalArgumentException("Team not found")
 
-                    if (requestedTeam.clubId !in adminClubIds) {
+                    if (requestedTeam.clubId !in visibleClubIds) {
                         throw IllegalArgumentException("Admin may only review submissions for assigned clubs")
                     }
 
@@ -241,17 +271,33 @@ class ChallengeService(
                         .associateBy { it.id }
 
                     allSubmissions.filter { submission ->
-                        teamsById[submission.teamId]?.clubId?.let { it in adminClubIds } == true
+                        teamsById[submission.teamId]?.clubId?.let { it in visibleClubIds } == true
                     }
                 }
             }
 
             UserRole.SUPERADMIN -> {
                 if (requestedTeamUuid != null) {
+                    val requestedTeam = teamsRepository.getByIdTx(requestedTeamUuid)
+                        ?: throw IllegalArgumentException("Team not found")
+
+                    if (requestedClubUuid != null && requestedTeam.clubId != requestedClubUuid) {
+                        throw IllegalArgumentException("Team does not belong to club")
+                    }
+
                     challengesRepository.getAllSubmissionsForChallengeAndTeamTx(
                         challengeId = challenge.id,
                         teamId = requestedTeamUuid
                     )
+                } else if (requestedClubUuid != null) {
+                    val allSubmissions = challengesRepository.getSubmissionsByChallengeIdTx(challenge.id)
+                    val teamsById = teamsRepository
+                        .getByIdsTx(allSubmissions.map { it.teamId }.distinct())
+                        .associateBy { it.id }
+
+                    allSubmissions.filter { submission ->
+                        teamsById[submission.teamId]?.clubId == requestedClubUuid
+                    }
                 } else {
                     challengesRepository.getSubmissionsByChallengeIdTx(challenge.id)
                 }

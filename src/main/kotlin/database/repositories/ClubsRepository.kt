@@ -179,6 +179,44 @@ class ClubsRepository {
         } > 0
     }
 
+    fun removeUserFromAllClubsTx(userId: UUID): Boolean {
+        return ClubToUsersTable.deleteWhere { ClubToUsersTable.userId eq userId } > 0
+    }
+
+    fun removeClubAdminForUserTx(userId: UUID): Boolean {
+        return ClubAdminsTable.deleteWhere { ClubAdminsTable.userId eq userId } > 0
+    }
+
+    fun replaceUserClubTx(
+        userId: UUID,
+        clubId: UUID,
+        isAdmin: Boolean = false,
+        createdAt: Long = System.currentTimeMillis()
+    ) {
+        removeUserFromAllClubsTx(userId)
+        removeClubAdminForUserTx(userId)
+        addUserToClubTx(userId, clubId, createdAt = createdAt)
+        if (isAdmin) {
+            addClubAdminTx(userId, clubId, createdAt = createdAt)
+        }
+    }
+
+    fun replaceUserClubsTx(
+        userId: UUID,
+        clubIds: List<UUID>,
+        isAdmin: Boolean = false,
+        createdAt: Long = System.currentTimeMillis()
+    ) {
+        removeUserFromAllClubsTx(userId)
+        removeClubAdminForUserTx(userId)
+        clubIds.distinct().forEach { clubId ->
+            addUserToClubTx(userId, clubId, createdAt = createdAt)
+            if (isAdmin) {
+                addClubAdminTx(userId, clubId, createdAt = createdAt)
+            }
+        }
+    }
+
     suspend fun removeUserFromClub(userId: UUID, clubId: UUID): Boolean = dbQuery {
         removeUserFromClubTx(userId, clubId)
     }

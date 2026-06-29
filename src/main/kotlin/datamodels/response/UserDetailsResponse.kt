@@ -67,3 +67,65 @@ data class ResetUserPasswordResponse(
     val temporaryPassword: String,
     val message: String
 )
+
+@Serializable
+data class SuperAdminUserResponse(
+    val id: String,
+    val name: String,
+    val username: String,
+    val email: String,
+    val phone: String,
+    val role: UserRole,
+    val dob: String,
+    val gender: String? = null,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null,
+    val createdAt: Long
+)
+
+@Serializable
+data class CmsCreatedUserResponse(
+    val id: String,
+    val name: String,
+    val username: String,
+    val role: UserRole,
+    val dob: String,
+    val gender: String? = null,
+    val email: String? = null,
+    val phone: String? = null,
+    val position: String? = null,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null,
+    val clubIds: List<String>,
+    val teamIds: List<String> = emptyList(),
+    val children: List<CmsCreatedChildUserResponse> = emptyList(),
+    val createdAt: Long
+)
+
+@Serializable
+data class CmsCreatedChildUserResponse(
+    val id: String,
+    val name: String,
+    val username: String,
+    val role: UserRole,
+    val dob: String,
+    val gender: String? = null,
+    val position: String? = null,
+    val state: String? = null,
+    val town: String? = null,
+    val socialMediaHandle: String? = null,
+    val clubIds: List<String>,
+    val teamIds: List<String> = emptyList(),
+    val createdAt: Long
+)
+
+@Serializable
+data class UserManagementResponse(
+    val userId: String,
+    val username: String,
+    val clubIds: List<String> = emptyList(),
+    val teamIds: List<String> = emptyList(),
+    val message: String
+)

@@ -70,6 +70,7 @@ data class CreateClubAdminRequest(
     val email: String,
     val phone: String,
     val dob: String,
+    val clubIds: List<String> = emptyList(),
     val state: String? = null,
     val town: String? = null,
     val socialMediaHandle: String? = null
@@ -79,6 +80,7 @@ data class CreateClubAdminRequest(
 data class ClubAdminResponse(
     val id: String,
     val clubId: String,
+    val clubIds: List<String>,
     val name: String,
     val username: String,
     val email: String,
