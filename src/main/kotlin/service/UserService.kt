@@ -138,7 +138,8 @@ class UserService(
                     state = user.state,
                     town = user.town,
                     socialMediaHandle = user.socialMediaHandle,
-                    clubIds = clubsRepository.getClubsForUserTx(user.id).map { it.id.toString() }
+                    clubIds = clubsRepository.getClubsForUserTx(user.id).map { it.id.toString() },
+                    teamIds = teamsRepository.getTeamsForUserTx(user.id).map { it.id.toString() }
                 )
             }
         )
