@@ -347,6 +347,7 @@ class ChallengesRepository {
                         (ChallengeSubmissionsTable.teamId eq teamId)
             }
             .map { row -> row.toChallengeSubmission() to row.toUser() }
+            .filter { (submission, _) -> submission.validationStatus != SubmissionValidationStatus.INVALID }
             .groupBy { (submission, _) -> submission.userId }
             .values
             .map { submissionsForUser ->

@@ -4,6 +4,7 @@ import com.provingground.database.repositories.ChallengesRepository
 import com.provingground.database.repositories.TeamsRepository
 import com.provingground.database.repositories.UsersRepository
 import com.provingground.database.tables.ChallengeScoringType
+import com.provingground.database.tables.SubmissionValidationStatus
 import com.provingground.database.tables.UserRole
 import com.provingground.datamodels.Challenge
 import com.provingground.datamodels.ChallengeSubmission
@@ -416,7 +417,7 @@ class HomeService(
                     rank = index + 1,
                     submissionId = submission.id.toString(),
                     userId = user.id.toString(),
-                    userName = user.name,
+                    userName = user.username,
                     avatarUrl = user.avatarUrl,
                     score = submission.score,
                     validationStatus = submission.validationStatus
@@ -469,6 +470,7 @@ class HomeService(
         scoringType: ChallengeScoringType
     ): Int? {
         val rankedBestSubmissions = submissions
+            .filter { it.validationStatus != SubmissionValidationStatus.INVALID }
             .groupBy { it.userId }
             .values
             .map { athleteSubmissions ->

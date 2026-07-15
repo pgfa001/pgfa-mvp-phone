@@ -924,7 +924,7 @@ class ChallengeService(
                     rank = index + 1,
                     submissionId = submission.id.toString(),
                     userId = user.id.toString(),
-                    userName = user.name,
+                    userName = user.username,
                     avatarUrl = user.avatarUrl,
                     score = submission.score,
                     validationStatus = submission.validationStatus
@@ -1374,6 +1374,10 @@ class ChallengeService(
             .getSubmissionsForChallengeTx(challenge.id)
 
         val filteredSubmissions = allChallengeSubmissions.filter { submission ->
+            if (submission.validationStatus == SubmissionValidationStatus.INVALID) {
+                return@filter false
+            }
+
             val team = teamsById[submission.teamId] ?: return@filter false
 
             when (requestedScope) {
@@ -1407,7 +1411,7 @@ class ChallengeService(
             FullLeaderboardEntryResponse(
                 rank = 0,
                 athleteId = athlete.id.toString(),
-                athleteName = athlete.name,
+                athleteName = athlete.username,
                 teamId = team.id.toString(),
                 teamName = team.name,
                 avatarUrl = athlete.avatarUrl,
