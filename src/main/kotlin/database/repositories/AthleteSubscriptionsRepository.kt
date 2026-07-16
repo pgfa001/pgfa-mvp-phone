@@ -85,6 +85,22 @@ class AthleteSubscriptionsRepository {
             ?.toAthleteSubscription()
     }
 
+    fun getActiveStripeSubscriptionsForUserDeletionTx(userId: UUID): List<AthleteSubscription> {
+        return AthleteSubscriptionsTable
+            .selectAll()
+            .where {
+                ((AthleteSubscriptionsTable.athleteUserId eq userId) or
+                        (AthleteSubscriptionsTable.payerUserId eq userId)) and
+                        AthleteSubscriptionsTable.stripeSubscriptionId.isNotNull() and
+                        (AthleteSubscriptionsTable.status inList listOf(
+                            AthleteSubscriptionStatus.TRIALING,
+                            AthleteSubscriptionStatus.ACTIVE,
+                            AthleteSubscriptionStatus.PAST_DUE
+                        ))
+            }
+            .map { it.toAthleteSubscription() }
+    }
+
     fun updateCheckoutSessionTx(
         athleteUserId: UUID,
         payerUserId: UUID,

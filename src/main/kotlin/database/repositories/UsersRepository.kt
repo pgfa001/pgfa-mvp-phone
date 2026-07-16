@@ -194,8 +194,15 @@ class UsersRepository {
         updateUsernameTx(id, username)
     }
 
+    fun hasCreatedChallengesTx(id: UUID): Boolean {
+        return ChallengesTable
+            .select(ChallengesTable.id)
+            .where { ChallengesTable.createdBy eq id }
+            .any()
+    }
+
     fun deleteUserFullyTx(id: UUID): Boolean {
-        if (ChallengesTable.select(ChallengesTable.id).where { ChallengesTable.createdBy eq id }.any()) {
+        if (hasCreatedChallengesTx(id)) {
             throw IllegalArgumentException("User cannot be deleted because they have created challenges")
         }
 

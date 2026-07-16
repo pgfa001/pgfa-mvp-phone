@@ -15,6 +15,7 @@ import com.provingground.datamodels.UpdateUserUsernameRequest
 import com.provingground.datamodels.User
 import com.provingground.datamodels.response.CmsCreatedChildUserResponse
 import com.provingground.datamodels.response.CmsCreatedUserResponse
+import com.provingground.datamodels.response.DeleteAccountResponse
 import com.provingground.datamodels.response.ChildUserSummaryResponse
 import com.provingground.datamodels.response.ResetUserPasswordResponse
 import com.provingground.datamodels.response.SearchUsersResponse
@@ -429,6 +430,30 @@ class UserService(
             username = targetUser.username,
             message = "User deleted successfully"
         )
+    }
+
+    suspend fun deleteMyAccount(
+        actingUserId: UUID
+    ): DeleteAccountResponse {
+        newSuspendedTransaction(Dispatchers.IO) {
+            usersRepository.getByIdTx(actingUserId)
+                ?: throw IllegalArgumentException("User not found")
+
+            if (usersRepository.hasCreatedChallengesTx(actingUserId)) {
+                throw IllegalArgumentException("User cannot be deleted because they have created challenges")
+            }
+        }
+
+        subscriptionService.cancelStripeSubscriptionsForUserDeletion(actingUserId)
+
+        return newSuspendedTransaction(Dispatchers.IO) {
+            val deleted = usersRepository.deleteUserFullyTx(actingUserId)
+            if (!deleted) {
+                throw IllegalArgumentException("User not found")
+            }
+
+            DeleteAccountResponse(deleted = true)
+        }
     }
 
     suspend fun updateUsername(

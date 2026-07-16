@@ -118,6 +118,17 @@ class StripeBillingService(
         parseSubscriptionObject(json.parseToJsonElement(response).jsonObject)
     }
 
+    suspend fun cancelSubscription(subscriptionId: String): StripeSubscriptionState = withContext(Dispatchers.IO) {
+        val configuredSecretKey = secretKey?.takeIf { it.isNotBlank() }
+            ?: throw IllegalArgumentException("Stripe secret key is not configured")
+
+        val response = delete(
+            secretKey = configuredSecretKey,
+            path = "/v1/subscriptions/$subscriptionId"
+        )
+        parseSubscriptionObject(json.parseToJsonElement(response).jsonObject)
+    }
+
     fun parseWebhookUpdate(payload: String, signatureHeader: String?): StripeWebhookUpdate? {
         verifyWebhookSignatureIfConfigured(payload, signatureHeader)
 
@@ -210,6 +221,16 @@ class StripeBillingService(
             .uri(URI.create("https://api.stripe.com$path"))
             .header("Authorization", "Bearer $secretKey")
             .GET()
+            .build()
+
+        return send(request)
+    }
+
+    private fun delete(secretKey: String, path: String): String {
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("https://api.stripe.com$path"))
+            .header("Authorization", "Bearer $secretKey")
+            .DELETE()
             .build()
 
         return send(request)

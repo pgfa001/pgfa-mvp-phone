@@ -125,6 +125,31 @@ fun Route.userRoutes(
                 }
             }
 
+            delete("/me") {
+                val principal = call.principal<JWTPrincipal>()
+                val actingUserIdString = principal?.payload?.getClaim("userId")?.asString()
+
+                if (actingUserIdString.isNullOrBlank()) {
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ApiMessageResponse("Invalid token")
+                    )
+                    return@delete
+                }
+
+                try {
+                    val response = userService.deleteMyAccount(
+                        actingUserId = UUID.fromString(actingUserIdString)
+                    )
+                    call.respond(HttpStatusCode.OK, response)
+                } catch (e: IllegalArgumentException) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ApiMessageResponse("Unable to delete account. Please contact support.")
+                    )
+                }
+            }
+
             get("/{userId}") {
                 val principal = call.principal<JWTPrincipal>()
                 val actingUserIdString = principal?.payload?.getClaim("userId")?.asString()

@@ -164,6 +164,27 @@ class SubscriptionService(
         }
     }
 
+    suspend fun cancelStripeSubscriptionsForUserDeletion(userId: UUID) {
+        val stripeSubscriptionIds = newSuspendedTransaction(Dispatchers.IO) {
+            subscriptionsRepository
+                .getActiveStripeSubscriptionsForUserDeletionTx(userId)
+                .mapNotNull { it.stripeSubscriptionId }
+                .distinct()
+        }
+
+        stripeSubscriptionIds.forEach { stripeSubscriptionId ->
+            val canceledState = stripeBillingService.cancelSubscription(stripeSubscriptionId)
+            newSuspendedTransaction(Dispatchers.IO) {
+                subscriptionsRepository.updateStripeStateTx(
+                    stripeSubscriptionId = canceledState.subscriptionId,
+                    status = canceledState.status,
+                    currentPeriodEndsAt = canceledState.currentPeriodEndsAt,
+                    cancelAtPeriodEnd = canceledState.cancelAtPeriodEnd
+                )
+            }
+        }
+    }
+
     fun getEntitlementForAthleteTx(athlete: User): SubscriptionEntitlementResponse {
         if (athlete.role != UserRole.ATHLETE) {
             return SubscriptionEntitlementResponse(

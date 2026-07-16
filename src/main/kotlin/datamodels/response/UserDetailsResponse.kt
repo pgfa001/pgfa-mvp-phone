@@ -130,3 +130,8 @@ data class UserManagementResponse(
     val teamIds: List<String> = emptyList(),
     val message: String
 )
+
+@Serializable
+data class DeleteAccountResponse(
+    val deleted: Boolean
+)
