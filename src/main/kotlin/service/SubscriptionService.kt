@@ -12,8 +12,10 @@ import com.provingground.datamodels.response.AthleteSubscriptionResponse
 import com.provingground.datamodels.response.ConfirmSubscriptionResponse
 import com.provingground.datamodels.response.CreateSubscriptionCheckoutResponse
 import com.provingground.datamodels.response.GetMySubscriptionsResponse
+import com.provingground.datamodels.response.ManualPremiumAccessResponse
 import com.provingground.datamodels.response.SubscriptionEntitlementResponse
 import com.provingground.datamodels.response.SubscriptionEntitlementSource
+import com.provingground.datamodels.response.UpdateManualPremiumAccessRequest
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.util.UUID
@@ -75,6 +77,10 @@ class SubscriptionService(
 
             if (entitlement.source == SubscriptionEntitlementSource.CLUB_PAID) {
                 throw IllegalArgumentException("This athlete belongs to a club-paid club and does not need an individual subscription")
+            }
+
+            if (entitlement.manualPremiumGranted) {
+                throw IllegalArgumentException("This athlete already has premium access and does not need an individual subscription")
             }
 
             val subscription = subscriptionsRepository.getByAthleteUserIdTx(athlete.id)
@@ -185,6 +191,70 @@ class SubscriptionService(
         }
     }
 
+    suspend fun grantManualPremiumAccess(
+        actingUserId: UUID,
+        athleteUserId: String,
+        request: UpdateManualPremiumAccessRequest
+    ): ManualPremiumAccessResponse = newSuspendedTransaction(Dispatchers.IO) {
+        val actingUser = usersRepository.getByIdTx(actingUserId)
+            ?: throw IllegalArgumentException("User not found")
+        if (actingUser.role != UserRole.SUPERADMIN) {
+            throw IllegalArgumentException("Only super admins can grant manual premium access")
+        }
+
+        val athlete = getAthleteForManualPremiumTx(athleteUserId)
+        val now = System.currentTimeMillis()
+        val expiresAt = request.expiresAt
+        if (expiresAt != null && expiresAt <= now) {
+            throw IllegalArgumentException("expiresAt must be in the future")
+        }
+
+        val payerUserId = usersRepository.getParentsForChildTx(athlete.id).firstOrNull()?.id ?: athlete.id
+        subscriptionsRepository.getByAthleteUserIdTx(athlete.id)
+            ?: subscriptionsRepository.createTrialIfMissingTx(
+                athleteUserId = athlete.id,
+                payerUserId = payerUserId,
+                now = now
+            )
+
+        subscriptionsRepository.grantManualPremiumAccessTx(
+            athleteUserId = athlete.id,
+            grantedBy = actingUser.id,
+            expiresAt = expiresAt,
+            reason = request.reason.trimToNull(),
+            now = now
+        )
+
+        buildManualPremiumAccessResponseTx(athlete)
+    }
+
+    suspend fun revokeManualPremiumAccess(
+        actingUserId: UUID,
+        athleteUserId: String
+    ): ManualPremiumAccessResponse = newSuspendedTransaction(Dispatchers.IO) {
+        val actingUser = usersRepository.getByIdTx(actingUserId)
+            ?: throw IllegalArgumentException("User not found")
+        if (actingUser.role != UserRole.SUPERADMIN) {
+            throw IllegalArgumentException("Only super admins can revoke manual premium access")
+        }
+
+        val athlete = getAthleteForManualPremiumTx(athleteUserId)
+        val now = System.currentTimeMillis()
+        subscriptionsRepository.getByAthleteUserIdTx(athlete.id)
+            ?: subscriptionsRepository.createTrialIfMissingTx(
+                athleteUserId = athlete.id,
+                payerUserId = usersRepository.getParentsForChildTx(athlete.id).firstOrNull()?.id ?: athlete.id,
+                now = now
+            )
+
+        subscriptionsRepository.revokeManualPremiumAccessTx(
+            athleteUserId = athlete.id,
+            now = now
+        )
+
+        buildManualPremiumAccessResponseTx(athlete)
+    }
+
     fun getEntitlementForAthleteTx(athlete: User): SubscriptionEntitlementResponse {
         if (athlete.role != UserRole.ATHLETE) {
             return SubscriptionEntitlementResponse(
@@ -194,22 +264,45 @@ class SubscriptionService(
             )
         }
 
+        val existingSubscription = subscriptionsRepository.getByAthleteUserIdTx(athlete.id)
+        val now = System.currentTimeMillis()
+        val hasManualPremiumAccess = existingSubscription?.hasActiveManualPremium(now) == true
+
         if (isClubPaidAthleteTx(athlete.id)) {
             return SubscriptionEntitlementResponse(
                 status = null,
                 hasAccess = true,
                 source = SubscriptionEntitlementSource.CLUB_PAID,
+                manualPremiumGranted = hasManualPremiumAccess,
+                manualPremiumGrantedAt = existingSubscription?.manualPremiumGrantedAt,
+                manualPremiumExpiresAt = existingSubscription?.manualPremiumExpiresAt,
+                manualPremiumReason = existingSubscription?.manualPremiumReason,
                 upgradeRequired = false
             )
         }
 
-        val subscription = subscriptionsRepository.getByAthleteUserIdTx(athlete.id)
-            ?: subscriptionsRepository.createTrialIfMissingTx(
+        val subscription = existingSubscription ?: subscriptionsRepository.createTrialIfMissingTx(
                 athleteUserId = athlete.id,
                 payerUserId = athlete.id
             )
 
-        val now = System.currentTimeMillis()
+        if (subscription.hasActiveManualPremium(now)) {
+            return SubscriptionEntitlementResponse(
+                status = AthleteSubscriptionStatus.ACTIVE,
+                hasAccess = true,
+                source = SubscriptionEntitlementSource.ATHLETE_PAID,
+                trialStartedAt = subscription.trialStartedAt,
+                trialEndsAt = subscription.trialEndsAt,
+                currentPeriodEndsAt = subscription.manualPremiumExpiresAt,
+                cancelAtPeriodEnd = subscription.cancelAtPeriodEnd,
+                manualPremiumGranted = true,
+                manualPremiumGrantedAt = subscription.manualPremiumGrantedAt,
+                manualPremiumExpiresAt = subscription.manualPremiumExpiresAt,
+                manualPremiumReason = subscription.manualPremiumReason,
+                upgradeRequired = false
+            )
+        }
+
         val hasTrialAccess = subscription.status == AthleteSubscriptionStatus.TRIALING &&
                 subscription.trialEndsAt?.let { it > now } == true
         val hasPaidAccess = subscription.status == AthleteSubscriptionStatus.ACTIVE &&
@@ -235,6 +328,10 @@ class SubscriptionService(
             trialEndsAt = subscription.trialEndsAt,
             currentPeriodEndsAt = subscription.currentPeriodEndsAt,
             cancelAtPeriodEnd = subscription.cancelAtPeriodEnd,
+            manualPremiumGranted = false,
+            manualPremiumGrantedAt = subscription.manualPremiumGrantedAt,
+            manualPremiumExpiresAt = subscription.manualPremiumExpiresAt,
+            manualPremiumReason = subscription.manualPremiumReason,
             upgradeRequired = !hasAccess
         )
     }
@@ -295,6 +392,46 @@ class SubscriptionService(
         return clubsRepository.getClubsForUserTx(athleteUserId)
             .any { it.subscriptionType == SubscriptionType.CLUB_PAID }
     }
+
+    private fun getAthleteForManualPremiumTx(athleteUserId: String): User {
+        val athleteUuid = try {
+            UUID.fromString(athleteUserId)
+        } catch (_: Exception) {
+            throw IllegalArgumentException("Invalid athleteUserId")
+        }
+
+        val athlete = usersRepository.getByIdTx(athleteUuid)
+            ?: throw IllegalArgumentException("Athlete not found")
+        if (athlete.role != UserRole.ATHLETE) {
+            throw IllegalArgumentException("Manual premium access can only be granted to athlete accounts")
+        }
+
+        return athlete
+    }
+
+    private fun buildManualPremiumAccessResponseTx(athlete: User): ManualPremiumAccessResponse {
+        val subscription = subscriptionsRepository.getByAthleteUserIdTx(athlete.id)
+        val now = System.currentTimeMillis()
+        val manualPremiumGranted = subscription?.hasActiveManualPremium(now) == true
+
+        return ManualPremiumAccessResponse(
+            athleteUserId = athlete.id.toString(),
+            athleteName = athlete.name,
+            manualPremiumGranted = manualPremiumGranted,
+            manualPremiumGrantedAt = subscription?.manualPremiumGrantedAt,
+            manualPremiumExpiresAt = subscription?.manualPremiumExpiresAt,
+            manualPremiumReason = subscription?.manualPremiumReason,
+            subscription = getEntitlementForAthleteTx(athlete)
+        )
+    }
+
+    private fun AthleteSubscription.hasActiveManualPremium(now: Long): Boolean {
+        return manualPremiumGrantedAt != null &&
+                manualPremiumExpiresAt?.let { it > now } != false
+    }
+
+    private fun String?.trimToNull(): String? =
+        this?.trim()?.takeIf { it.isNotBlank() }
 
     private data class CheckoutPreparation(
         val payer: User,

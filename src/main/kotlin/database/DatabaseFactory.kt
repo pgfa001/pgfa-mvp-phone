@@ -151,6 +151,10 @@ object DatabaseFactory {
                     it[stripePriceId] = null
                     it[currentPeriodEndsAt] = null
                     it[cancelAtPeriodEnd] = false
+                    it[manualPremiumGrantedAt] = null
+                    it[manualPremiumExpiresAt] = null
+                    it[manualPremiumGrantedBy] = null
+                    it[manualPremiumReason] = null
                     it[createdAt] = now
                     it[updatedAt] = now
                 }

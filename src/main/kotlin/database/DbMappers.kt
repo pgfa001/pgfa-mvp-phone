@@ -184,6 +184,10 @@ fun ResultRow.toAthleteSubscription(): AthleteSubscription {
         stripePriceId = this[AthleteSubscriptionsTable.stripePriceId],
         currentPeriodEndsAt = this[AthleteSubscriptionsTable.currentPeriodEndsAt],
         cancelAtPeriodEnd = this[AthleteSubscriptionsTable.cancelAtPeriodEnd],
+        manualPremiumGrantedAt = this[AthleteSubscriptionsTable.manualPremiumGrantedAt],
+        manualPremiumExpiresAt = this[AthleteSubscriptionsTable.manualPremiumExpiresAt],
+        manualPremiumGrantedBy = this[AthleteSubscriptionsTable.manualPremiumGrantedBy],
+        manualPremiumReason = this[AthleteSubscriptionsTable.manualPremiumReason],
         createdAt = this[AthleteSubscriptionsTable.createdAt],
         updatedAt = this[AthleteSubscriptionsTable.updatedAt]
     )

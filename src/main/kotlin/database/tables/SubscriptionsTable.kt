@@ -23,6 +23,10 @@ object AthleteSubscriptionsTable : Table("athlete_subscriptions") {
     val stripePriceId = varchar("stripe_price_id", 255).nullable()
     val currentPeriodEndsAt = long("current_period_ends_at").nullable()
     val cancelAtPeriodEnd = bool("cancel_at_period_end")
+    val manualPremiumGrantedAt = long("manual_premium_granted_at").nullable()
+    val manualPremiumExpiresAt = long("manual_premium_expires_at").nullable()
+    val manualPremiumGrantedBy = uuid("manual_premium_granted_by").nullable()
+    val manualPremiumReason = varchar("manual_premium_reason", 500).nullable()
     val createdAt = long("created_at")
     val updatedAt = long("updated_at")
 

@@ -22,6 +22,10 @@ class AthleteSubscriptionsRepository {
             it[stripePriceId] = subscription.stripePriceId
             it[currentPeriodEndsAt] = subscription.currentPeriodEndsAt
             it[cancelAtPeriodEnd] = subscription.cancelAtPeriodEnd
+            it[manualPremiumGrantedAt] = subscription.manualPremiumGrantedAt
+            it[manualPremiumExpiresAt] = subscription.manualPremiumExpiresAt
+            it[manualPremiumGrantedBy] = subscription.manualPremiumGrantedBy
+            it[manualPremiumReason] = subscription.manualPremiumReason
             it[createdAt] = subscription.createdAt
             it[updatedAt] = subscription.updatedAt
         }
@@ -54,6 +58,10 @@ class AthleteSubscriptionsRepository {
                 stripePriceId = null,
                 currentPeriodEndsAt = null,
                 cancelAtPeriodEnd = false,
+                manualPremiumGrantedAt = null,
+                manualPremiumExpiresAt = null,
+                manualPremiumGrantedBy = null,
+                manualPremiumReason = null,
                 createdAt = now,
                 updatedAt = now
             )
@@ -129,6 +137,35 @@ class AthleteSubscriptionsRepository {
             it[AthleteSubscriptionsTable.status] = status
             it[AthleteSubscriptionsTable.currentPeriodEndsAt] = currentPeriodEndsAt
             it[AthleteSubscriptionsTable.cancelAtPeriodEnd] = cancelAtPeriodEnd
+            it[updatedAt] = now
+        } > 0
+    }
+
+    fun grantManualPremiumAccessTx(
+        athleteUserId: UUID,
+        grantedBy: UUID,
+        expiresAt: Long?,
+        reason: String?,
+        now: Long = System.currentTimeMillis()
+    ): Boolean {
+        return AthleteSubscriptionsTable.update({ AthleteSubscriptionsTable.athleteUserId eq athleteUserId }) {
+            it[manualPremiumGrantedAt] = now
+            it[manualPremiumExpiresAt] = expiresAt
+            it[manualPremiumGrantedBy] = grantedBy
+            it[manualPremiumReason] = reason
+            it[updatedAt] = now
+        } > 0
+    }
+
+    fun revokeManualPremiumAccessTx(
+        athleteUserId: UUID,
+        now: Long = System.currentTimeMillis()
+    ): Boolean {
+        return AthleteSubscriptionsTable.update({ AthleteSubscriptionsTable.athleteUserId eq athleteUserId }) {
+            it[manualPremiumGrantedAt] = null
+            it[manualPremiumExpiresAt] = null
+            it[manualPremiumGrantedBy] = null
+            it[manualPremiumReason] = null
             it[updatedAt] = now
         } > 0
     }

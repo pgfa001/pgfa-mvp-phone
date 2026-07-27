@@ -140,7 +140,12 @@ class UserService(
                     town = user.town,
                     socialMediaHandle = user.socialMediaHandle,
                     clubIds = clubsRepository.getClubsForUserTx(user.id).map { it.id.toString() },
-                    teamIds = teamsRepository.getTeamsForUserTx(user.id).map { it.id.toString() }
+                    teamIds = teamsRepository.getTeamsForUserTx(user.id).map { it.id.toString() },
+                    subscription = if (user.role == UserRole.ATHLETE) {
+                        subscriptionService.getEntitlementForAthleteTx(user)
+                    } else {
+                        null
+                    }
                 )
             }
         )

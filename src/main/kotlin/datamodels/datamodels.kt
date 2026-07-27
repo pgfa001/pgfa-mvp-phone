@@ -157,6 +157,10 @@ data class AthleteSubscription(
     val stripePriceId: String?,
     val currentPeriodEndsAt: Long?,
     val cancelAtPeriodEnd: Boolean,
+    val manualPremiumGrantedAt: Long? = null,
+    val manualPremiumExpiresAt: Long? = null,
+    val manualPremiumGrantedBy: UUID? = null,
+    val manualPremiumReason: String? = null,
     val createdAt: Long,
     val updatedAt: Long
 )

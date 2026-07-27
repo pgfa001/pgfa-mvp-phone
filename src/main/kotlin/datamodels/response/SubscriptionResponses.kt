@@ -20,6 +20,10 @@ data class SubscriptionEntitlementResponse(
     val trialEndsAt: Long? = null,
     val currentPeriodEndsAt: Long? = null,
     val cancelAtPeriodEnd: Boolean = false,
+    val manualPremiumGranted: Boolean = false,
+    val manualPremiumGrantedAt: Long? = null,
+    val manualPremiumExpiresAt: Long? = null,
+    val manualPremiumReason: String? = null,
     val upgradeRequired: Boolean
 )
 
@@ -68,5 +72,22 @@ data class ConfirmSubscriptionResponse(
 @Serializable
 data class SubscriptionRequiredResponse(
     val message: String,
+    val subscription: SubscriptionEntitlementResponse
+)
+
+@Serializable
+data class UpdateManualPremiumAccessRequest(
+    val expiresAt: Long? = null,
+    val reason: String? = null
+)
+
+@Serializable
+data class ManualPremiumAccessResponse(
+    val athleteUserId: String,
+    val athleteName: String,
+    val manualPremiumGranted: Boolean,
+    val manualPremiumGrantedAt: Long? = null,
+    val manualPremiumExpiresAt: Long? = null,
+    val manualPremiumReason: String? = null,
     val subscription: SubscriptionEntitlementResponse
 )

@@ -3,6 +3,7 @@ package com.provingground.routing
 import com.provingground.datamodels.ApiMessageResponse
 import com.provingground.datamodels.response.ConfirmSubscriptionRequest
 import com.provingground.datamodels.response.CreateSubscriptionCheckoutRequest
+import com.provingground.datamodels.response.UpdateManualPremiumAccessRequest
 import com.provingground.service.SubscriptionService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
@@ -14,8 +15,10 @@ import io.ktor.server.request.receive
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import java.util.UUID
 
@@ -56,6 +59,40 @@ fun Route.subscriptionRoutes(subscriptionService: SubscriptionService) {
                     val response = subscriptionService.confirmSubscription(
                         actingUserId = actingUserId,
                         athleteUserId = request.athleteUserId
+                    )
+                    call.respond(HttpStatusCode.OK, response)
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ApiMessageResponse(e.message ?: "Invalid request"))
+                }
+            }
+
+            put("/athletes/{athleteUserId}/manual-premium") {
+                val actingUserId = call.authenticatedUserId() ?: return@put
+                val athleteUserId = call.parameters["athleteUserId"]
+                    ?: return@put call.respond(HttpStatusCode.BadRequest, ApiMessageResponse("Missing athleteUserId"))
+
+                try {
+                    val request = call.receive<UpdateManualPremiumAccessRequest>()
+                    val response = subscriptionService.grantManualPremiumAccess(
+                        actingUserId = actingUserId,
+                        athleteUserId = athleteUserId,
+                        request = request
+                    )
+                    call.respond(HttpStatusCode.OK, response)
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ApiMessageResponse(e.message ?: "Invalid request"))
+                }
+            }
+
+            delete("/athletes/{athleteUserId}/manual-premium") {
+                val actingUserId = call.authenticatedUserId() ?: return@delete
+                val athleteUserId = call.parameters["athleteUserId"]
+                    ?: return@delete call.respond(HttpStatusCode.BadRequest, ApiMessageResponse("Missing athleteUserId"))
+
+                try {
+                    val response = subscriptionService.revokeManualPremiumAccess(
+                        actingUserId = actingUserId,
+                        athleteUserId = athleteUserId
                     )
                     call.respond(HttpStatusCode.OK, response)
                 } catch (e: IllegalArgumentException) {

@@ -58,7 +58,8 @@ data class UserSearchResultResponse(
     val town: String? = null,
     val socialMediaHandle: String? = null,
     val clubIds: List<String>,
-    val teamIds: List<String> = emptyList()
+    val teamIds: List<String> = emptyList(),
+    val subscription: SubscriptionEntitlementResponse? = null
 )
 
 @Serializable
