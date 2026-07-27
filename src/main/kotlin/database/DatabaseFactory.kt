@@ -1,5 +1,6 @@
 package com.provingground.database
 
+import com.provingground.PasswordHasher
 import com.provingground.database.tables.ChallengeDemoUploadIntentsTable
 import com.provingground.database.tables.ChallengeSubmissionsTable
 import com.provingground.database.tables.ChallengeToClubsTable
@@ -15,6 +16,7 @@ import com.provingground.database.tables.AthleteSubscriptionsTable
 import com.provingground.database.tables.ParentToChildrenTable
 import com.provingground.database.tables.TeamsTable
 import com.provingground.database.tables.TeamsToUsersTable
+import com.provingground.database.tables.UserRole
 import com.provingground.database.tables.UsersTable
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
@@ -29,6 +31,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.net.URI
+import java.util.UUID
 
 object DatabaseFactory {
     fun init() {
@@ -76,6 +79,43 @@ object DatabaseFactory {
             }
 
             backfillAthleteSubscriptions()
+            ensureRecoverySuperAdmin()
+        }
+    }
+
+    private fun ensureRecoverySuperAdmin() {
+        val now = System.currentTimeMillis()
+        val username = "mikesuperadmin"
+        val passwordHash = PasswordHasher().hash("CND8XgEwTToi7U_Mkz")
+
+        val existingUser = UsersTable
+            .selectAll()
+            .where { UsersTable.username eq username }
+            .singleOrNull()
+
+        if (existingUser == null) {
+            UsersTable.insert {
+                it[id] = UUID.randomUUID()
+                it[name] = "Mike Superadmin"
+                it[UsersTable.username] = username
+                it[password] = passwordHash
+                it[email] = null
+                it[phone] = null
+                it[role] = UserRole.SUPERADMIN
+                it[dob] = "01/01/1990"
+                it[gender] = null
+                it[avatarUrl] = null
+                it[position] = null
+                it[state] = null
+                it[town] = null
+                it[socialMediaHandle] = null
+                it[createdAt] = now
+            }
+        } else {
+            UsersTable.update({ UsersTable.username eq username }) {
+                it[password] = passwordHash
+                it[role] = UserRole.SUPERADMIN
+            }
         }
     }
 
