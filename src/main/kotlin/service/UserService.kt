@@ -420,21 +420,35 @@ class UserService(
     suspend fun deleteUser(
         actingUserId: UUID,
         requestedUserId: String
-    ): UserManagementResponse = newSuspendedTransaction(Dispatchers.IO) {
-        val actingUser = requireSuperAdminTx(actingUserId)
-        val targetUser = getTargetUserTx(requestedUserId)
+    ): UserManagementResponse {
+        val targetUser = newSuspendedTransaction(Dispatchers.IO) {
+            val actingUser = requireSuperAdminTx(actingUserId)
+            val targetUser = getTargetUserTx(requestedUserId)
 
-        if (targetUser.id == actingUser.id) {
-            throw IllegalArgumentException("Super admins cannot delete their own account")
+            if (targetUser.id == actingUser.id) {
+                throw IllegalArgumentException("Super admins cannot delete their own account")
+            }
+            if (usersRepository.hasCreatedChallengesTx(targetUser.id)) {
+                throw IllegalArgumentException("User cannot be deleted because they have created challenges")
+            }
+
+            targetUser
         }
 
-        usersRepository.deleteUserFullyTx(targetUser.id)
+        subscriptionService.cancelStripeSubscriptionsForUserDeletion(targetUser.id)
 
-        UserManagementResponse(
-            userId = targetUser.id.toString(),
-            username = targetUser.username,
-            message = "User deleted successfully"
-        )
+        return newSuspendedTransaction(Dispatchers.IO) {
+            val deleted = usersRepository.deleteUserFullyTx(targetUser.id)
+            if (!deleted) {
+                throw IllegalArgumentException("User not found")
+            }
+
+            UserManagementResponse(
+                userId = targetUser.id.toString(),
+                username = targetUser.username,
+                message = "User deleted successfully"
+            )
+        }
     }
 
     suspend fun deleteMyAccount(

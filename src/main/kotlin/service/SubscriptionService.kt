@@ -179,14 +179,24 @@ class SubscriptionService(
         }
 
         stripeSubscriptionIds.forEach { stripeSubscriptionId ->
-            val canceledState = stripeBillingService.cancelSubscription(stripeSubscriptionId)
-            newSuspendedTransaction(Dispatchers.IO) {
-                subscriptionsRepository.updateStripeStateTx(
-                    stripeSubscriptionId = canceledState.subscriptionId,
-                    status = canceledState.status,
-                    currentPeriodEndsAt = canceledState.currentPeriodEndsAt,
-                    cancelAtPeriodEnd = canceledState.cancelAtPeriodEnd
-                )
+            try {
+                val canceledState = stripeBillingService.cancelSubscription(stripeSubscriptionId)
+                newSuspendedTransaction(Dispatchers.IO) {
+                    subscriptionsRepository.updateStripeStateTx(
+                        stripeSubscriptionId = canceledState.subscriptionId,
+                        status = canceledState.status,
+                        currentPeriodEndsAt = canceledState.currentPeriodEndsAt,
+                        cancelAtPeriodEnd = canceledState.cancelAtPeriodEnd
+                    )
+                }
+            } catch (e: StripeRequestException) {
+                if (!e.isMissingSubscription()) {
+                    throw e
+                }
+
+                newSuspendedTransaction(Dispatchers.IO) {
+                    subscriptionsRepository.detachMissingStripeSubscriptionTx(stripeSubscriptionId)
+                }
             }
         }
     }

@@ -141,6 +141,21 @@ class AthleteSubscriptionsRepository {
         } > 0
     }
 
+    fun detachMissingStripeSubscriptionTx(
+        stripeSubscriptionId: String,
+        now: Long = System.currentTimeMillis()
+    ): Boolean {
+        return AthleteSubscriptionsTable.update({ AthleteSubscriptionsTable.stripeSubscriptionId eq stripeSubscriptionId }) {
+            it[AthleteSubscriptionsTable.status] = AthleteSubscriptionStatus.CANCELED
+            it[AthleteSubscriptionsTable.stripeCustomerId] = null
+            it[AthleteSubscriptionsTable.stripeSubscriptionId] = null
+            it[AthleteSubscriptionsTable.stripePriceId] = null
+            it[AthleteSubscriptionsTable.currentPeriodEndsAt] = null
+            it[AthleteSubscriptionsTable.cancelAtPeriodEnd] = false
+            it[updatedAt] = now
+        } > 0
+    }
+
     fun grantManualPremiumAccessTx(
         athleteUserId: UUID,
         grantedBy: UUID,

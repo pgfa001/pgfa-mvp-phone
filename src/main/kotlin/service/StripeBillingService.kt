@@ -41,6 +41,17 @@ data class StripeWebhookUpdate(
     val cancelAtPeriodEnd: Boolean
 )
 
+class StripeRequestException(
+    val statusCode: Int,
+    val responseBody: String
+) : IllegalArgumentException("Stripe request failed: $responseBody") {
+    fun isMissingSubscription(): Boolean {
+        return statusCode == 404 &&
+                responseBody.contains("resource_missing") &&
+                responseBody.contains("No such subscription", ignoreCase = true)
+    }
+}
+
 class StripeBillingService(
     private val secretKey: String? = System.getenv("STRIPE_SECRET_KEY"),
     private val priceId: String? = System.getenv("STRIPE_ATHLETE_MONTHLY_PRICE_ID"),
@@ -239,7 +250,10 @@ class StripeBillingService(
     private fun send(request: HttpRequest): String {
         val response = client.send(request, HttpResponse.BodyHandlers.ofString())
         if (response.statusCode() !in 200..299) {
-            throw IllegalArgumentException("Stripe request failed: ${response.body()}")
+            throw StripeRequestException(
+                statusCode = response.statusCode(),
+                responseBody = response.body()
+            )
         }
         return response.body()
     }
